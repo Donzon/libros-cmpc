@@ -1,6 +1,7 @@
 import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { Prisma } from '@prisma/client';
+import { AuditAction, Prisma } from '@prisma/client';
+import { AuditService } from '../audit/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { BooksService } from './books.service';
 import { CreateBookDto } from './dto/create-book.dto';
@@ -15,9 +16,13 @@ describe('BooksService', () => {
   let findMany: jest.Mock;
   let update: jest.Mock;
   let count: jest.Mock;
+  let auditLogCreate: jest.Mock;
+  let transaction: jest.Mock;
   let buildRelativePath: jest.Mock;
   let write: jest.Mock;
   let deleteIfExists: jest.Mock;
+
+  const userId = '11111111-1111-1111-1111-111111111111';
 
   const author = {
     id: 'a1111111-1111-4111-8111-111111111111',
@@ -60,17 +65,30 @@ describe('BooksService', () => {
     findMany = jest.fn();
     update = jest.fn();
     count = jest.fn();
+    auditLogCreate = jest.fn().mockResolvedValue({ id: 'audit-1' });
     buildRelativePath = jest.fn();
     write = jest.fn();
     deleteIfExists = jest.fn();
 
+    transaction = jest.fn(
+      async (callback: (tx: unknown) => Promise<unknown>) => {
+        const tx = {
+          book: { create, update },
+          auditLog: { create: auditLogCreate },
+        };
+        return callback(tx);
+      },
+    );
+
     const moduleRef: TestingModule = await Test.createTestingModule({
       providers: [
         BooksService,
+        AuditService,
         {
           provide: PrismaService,
           useValue: {
             book: { create, findFirst, findMany, update, count },
+            $transaction: transaction,
           },
         },
         {
@@ -84,7 +102,7 @@ describe('BooksService', () => {
   });
 
   describe('create', () => {
-    it('crea y serializa price como string decimal', async () => {
+    it('crea y serializa price como string decimal con audit CREATE en la misma tx', async () => {
       const dto: CreateBookDto = {
         title: 'La casa de los espíritus',
         price: '19.99',
@@ -95,8 +113,9 @@ describe('BooksService', () => {
       };
       create.mockResolvedValue(buildBook());
 
-      const result = await service.create(dto);
+      const result = await service.create(dto, userId);
 
+      expect(transaction).toHaveBeenCalledTimes(1);
       expect(create).toHaveBeenCalledWith({
         data: {
           title: dto.title,
@@ -112,12 +131,40 @@ describe('BooksService', () => {
           genre: { select: { id: true, name: true } },
         },
       });
+      expect(auditLogCreate).toHaveBeenCalledWith({
+        data: {
+          userId,
+          action: AuditAction.CREATE,
+          entity: 'Book',
+          entityId: bookId,
+        },
+      });
       expect(result.price).toBe('19.99');
       expect(typeof result.price).toBe('string');
       expect(result.author).toEqual(author);
       expect(result.publisher).toEqual(publisher);
       expect(result.genre).toEqual(genre);
       expect(result.imageUrl).toBeNull();
+    });
+
+    it('si audit falla, no queda libro (rollback de $transaction)', async () => {
+      const dto: CreateBookDto = {
+        title: 'La casa de los espíritus',
+        price: '19.99',
+        available: true,
+        authorId: author.id,
+        publisherId: publisher.id,
+        genreId: genre.id,
+      };
+      create.mockResolvedValue(buildBook());
+      auditLogCreate.mockRejectedValue(new Error('audit failed'));
+
+      await expect(service.create(dto, userId)).rejects.toThrow(
+        'audit failed',
+      );
+      expect(create).toHaveBeenCalled();
+      expect(auditLogCreate).toHaveBeenCalled();
+      expect(transaction).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -266,15 +313,16 @@ describe('BooksService', () => {
   });
 
   describe('update', () => {
-    it('actualiza un libro activo', async () => {
+    it('actualiza un libro activo y escribe audit UPDATE', async () => {
       findFirst.mockResolvedValue(buildBook());
       update.mockResolvedValue(
         buildBook({ title: 'Nuevo título', price: new Prisma.Decimal('25.50') }),
       );
 
       const dto: UpdateBookDto = { title: 'Nuevo título', price: '25.50' };
-      const result = await service.update(bookId, dto);
+      const result = await service.update(bookId, dto, userId);
 
+      expect(transaction).toHaveBeenCalledTimes(1);
       expect(update).toHaveBeenCalledWith({
         where: { id: bookId },
         data: { title: 'Nuevo título', price: '25.50' },
@@ -282,6 +330,14 @@ describe('BooksService', () => {
           author: { select: { id: true, name: true } },
           publisher: { select: { id: true, name: true } },
           genre: { select: { id: true, name: true } },
+        },
+      });
+      expect(auditLogCreate).toHaveBeenCalledWith({
+        data: {
+          userId,
+          action: AuditAction.UPDATE,
+          entity: 'Book',
+          entityId: bookId,
         },
       });
       expect(result.title).toBe('Nuevo título');
@@ -293,24 +349,34 @@ describe('BooksService', () => {
       findFirst.mockResolvedValue(null);
 
       await expect(
-        service.update(bookId, { title: 'X' }),
+        service.update(bookId, { title: 'X' }, userId),
       ).rejects.toBeInstanceOf(NotFoundException);
       expect(update).not.toHaveBeenCalled();
+      expect(transaction).not.toHaveBeenCalled();
     });
   });
 
   describe('remove', () => {
-    it('hace soft delete seteando deletedAt', async () => {
+    it('hace soft delete seteando deletedAt y escribe audit DELETE', async () => {
       findFirst.mockResolvedValue(buildBook());
       update.mockResolvedValue(
         buildBook({ deletedAt: new Date('2026-09-29T12:00:00.000Z') }),
       );
 
-      await service.remove(bookId);
+      await service.remove(bookId, userId);
 
+      expect(transaction).toHaveBeenCalledTimes(1);
       expect(update).toHaveBeenCalledWith({
         where: { id: bookId },
         data: { deletedAt: expect.any(Date) },
+      });
+      expect(auditLogCreate).toHaveBeenCalledWith({
+        data: {
+          userId,
+          action: AuditAction.DELETE,
+          entity: 'Book',
+          entityId: bookId,
+        },
       });
     });
 
@@ -322,7 +388,7 @@ describe('BooksService', () => {
         buildBook({ deletedAt: new Date('2026-09-29T12:00:00.000Z') }),
       );
 
-      await service.remove(bookId);
+      await service.remove(bookId, userId);
       await expect(service.findOne(bookId)).rejects.toBeInstanceOf(
         NotFoundException,
       );
@@ -337,7 +403,7 @@ describe('BooksService', () => {
       size: 4,
     };
 
-    it('guarda como books/<bookId>-<timestamp>.<ext> y actualiza imagePath', async () => {
+    it('guarda como books/<bookId>-<timestamp>.<ext>, actualiza imagePath y audit UPDATE', async () => {
       const relativePath = `books/${bookId}-1710000000000.jpg`;
       findFirst.mockResolvedValue(buildBook());
       buildRelativePath.mockReturnValue(relativePath);
@@ -345,10 +411,11 @@ describe('BooksService', () => {
       deleteIfExists.mockResolvedValue(undefined);
       update.mockResolvedValue(buildBook({ imagePath: relativePath }));
 
-      const result = await service.uploadImage(bookId, file);
+      const result = await service.uploadImage(bookId, file, userId);
 
       expect(buildRelativePath).toHaveBeenCalledWith(bookId, 'jpg');
       expect(write).toHaveBeenCalledWith(relativePath, file.buffer);
+      expect(transaction).toHaveBeenCalledTimes(1);
       expect(update).toHaveBeenCalledWith({
         where: { id: bookId },
         data: { imagePath: relativePath },
@@ -356,6 +423,15 @@ describe('BooksService', () => {
           author: { select: { id: true, name: true } },
           publisher: { select: { id: true, name: true } },
           genre: { select: { id: true, name: true } },
+        },
+      });
+      expect(auditLogCreate).toHaveBeenCalledWith({
+        data: {
+          userId,
+          action: AuditAction.UPDATE,
+          entity: 'Book',
+          entityId: bookId,
+          metadata: { imagePath: relativePath },
         },
       });
       expect(deleteIfExists).toHaveBeenCalledWith(null);
@@ -377,7 +453,7 @@ describe('BooksService', () => {
         extension: 'webp',
         kind: 'webp',
       };
-      await service.uploadImage(bookId, webpFile);
+      await service.uploadImage(bookId, webpFile, userId);
 
       expect(deleteIfExists).toHaveBeenCalledWith(previous);
     });
@@ -385,9 +461,9 @@ describe('BooksService', () => {
     it('lanza NotFoundException si el libro está soft-deleted', async () => {
       findFirst.mockResolvedValue(null);
 
-      await expect(service.uploadImage(bookId, file)).rejects.toBeInstanceOf(
-        NotFoundException,
-      );
+      await expect(
+        service.uploadImage(bookId, file, userId),
+      ).rejects.toBeInstanceOf(NotFoundException);
       expect(write).not.toHaveBeenCalled();
       expect(update).not.toHaveBeenCalled();
     });
@@ -400,7 +476,7 @@ describe('BooksService', () => {
       deleteIfExists.mockResolvedValue(undefined);
       update.mockRejectedValue(new Error('db down'));
 
-      await expect(service.uploadImage(bookId, file)).rejects.toThrow(
+      await expect(service.uploadImage(bookId, file, userId)).rejects.toThrow(
         'db down',
       );
       expect(deleteIfExists).toHaveBeenCalledWith(relativePath);

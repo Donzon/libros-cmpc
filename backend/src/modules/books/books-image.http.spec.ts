@@ -167,6 +167,15 @@ describe('Books HTTP (image upload + static /uploads)', () => {
         onModuleInit: jest.fn(),
         onModuleDestroy: jest.fn(),
         book: { findFirst, update },
+        $transaction: jest.fn(
+          async (callback: (tx: unknown) => Promise<unknown>) => {
+            const tx = {
+              book: { findFirst, update },
+              auditLog: { create: jest.fn().mockResolvedValue({ id: 'audit-1' }) },
+            };
+            return callback(tx);
+          },
+        ),
       })
       .compile();
 

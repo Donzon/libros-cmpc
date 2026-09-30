@@ -180,6 +180,15 @@ describe('Books HTTP (CRUD + soft delete)', () => {
         onModuleInit: jest.fn(),
         onModuleDestroy: jest.fn(),
         book: { create, findFirst, findMany, update, count },
+        $transaction: jest.fn(
+          async (callback: (tx: unknown) => Promise<unknown>) => {
+            const tx = {
+              book: { create, findFirst, findMany, update, count },
+              auditLog: { create: jest.fn().mockResolvedValue({ id: 'audit-1' }) },
+            };
+            return callback(tx);
+          },
+        ),
       })
       .compile();
 

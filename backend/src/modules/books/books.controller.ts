@@ -15,6 +15,8 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { AuthenticatedUser } from '../auth/jwt.strategy';
 import { BooksService, BooksListResponse } from './books.service';
 import { CreateBookDto } from './dto/create-book.dto';
 import { ListBooksQueryDto } from './dto/list-books-query.dto';
@@ -31,8 +33,11 @@ export class BooksController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  create(@Body() dto: CreateBookDto): Promise<BookResponse> {
-    return this.booksService.create(dto);
+  create(
+    @Body() dto: CreateBookDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<BookResponse> {
+    return this.booksService.create(dto, user.userId);
   }
 
   @Get()
@@ -49,14 +54,18 @@ export class BooksController {
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateBookDto,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<BookResponse> {
-    return this.booksService.update(id, dto);
+    return this.booksService.update(id, dto, user.userId);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  remove(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
-    return this.booksService.remove(id);
+  remove(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<void> {
+    return this.booksService.remove(id, user.userId);
   }
 
   @Post(':id/image')
@@ -69,7 +78,8 @@ export class BooksController {
   uploadImage(
     @Param('id', ParseUUIDPipe) id: string,
     @UploadedFile(ImageFileValidationPipe) file: ValidatedImageFile,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<BookResponse> {
-    return this.booksService.uploadImage(id, file);
+    return this.booksService.uploadImage(id, file, user.userId);
   }
 }

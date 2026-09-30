@@ -9,6 +9,7 @@ import { AuthorsModule } from './modules/authors/authors.module';
 import { PublishersModule } from './modules/publishers/publishers.module';
 import { GenresModule } from './modules/genres/genres.module';
 import { BooksModule } from './modules/books/books.module';
+import { AuditModule } from './modules/audit/audit.module';
 import { JwtAuthGuard } from './modules/auth/jwt-auth.guard';
 
 @Module({
@@ -21,6 +22,7 @@ import { JwtAuthGuard } from './modules/auth/jwt-auth.guard';
     AuthorsModule,
     PublishersModule,
     GenresModule,
+    AuditModule,
     BooksModule,
   ],
   providers: [

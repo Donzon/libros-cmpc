@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { AuditAction, Prisma } from '@prisma/client';
+import { AuditService } from '../audit/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   buildBooksOrderBy,
@@ -32,24 +33,38 @@ const bookInclude = {
   genre: { select: { id: true, name: true } },
 } satisfies Prisma.BookInclude;
 
+const BOOK_ENTITY = 'Book';
+
 @Injectable()
 export class BooksService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly fileStorage: FileStorageService,
+    private readonly auditService: AuditService,
   ) {}
 
-  async create(dto: CreateBookDto): Promise<BookResponse> {
-    const book = await this.prisma.book.create({
-      data: {
-        title: dto.title,
-        price: dto.price,
-        available: dto.available,
-        authorId: dto.authorId,
-        publisherId: dto.publisherId,
-        genreId: dto.genreId,
-      },
-      include: bookInclude,
+  async create(dto: CreateBookDto, userId: string): Promise<BookResponse> {
+    const book = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.book.create({
+        data: {
+          title: dto.title,
+          price: dto.price,
+          available: dto.available,
+          authorId: dto.authorId,
+          publisherId: dto.publisherId,
+          genreId: dto.genreId,
+        },
+        include: bookInclude,
+      });
+
+      await this.auditService.log(tx, {
+        userId,
+        action: AuditAction.CREATE,
+        entity: BOOK_ENTITY,
+        entityId: created.id,
+      });
+
+      return created;
     });
 
     return toBookResponse(book as BookWithRelations);
@@ -85,39 +100,64 @@ export class BooksService {
     return toBookResponse(book);
   }
 
-  async update(id: string, dto: UpdateBookDto): Promise<BookResponse> {
+  async update(
+    id: string,
+    dto: UpdateBookDto,
+    userId: string,
+  ): Promise<BookResponse> {
     await this.findActiveOrThrow(id);
 
-    const book = await this.prisma.book.update({
-      where: { id },
-      data: {
-        ...(dto.title !== undefined ? { title: dto.title } : {}),
-        ...(dto.price !== undefined ? { price: dto.price } : {}),
-        ...(dto.available !== undefined ? { available: dto.available } : {}),
-        ...(dto.authorId !== undefined ? { authorId: dto.authorId } : {}),
-        ...(dto.publisherId !== undefined
-          ? { publisherId: dto.publisherId }
-          : {}),
-        ...(dto.genreId !== undefined ? { genreId: dto.genreId } : {}),
-      },
-      include: bookInclude,
+    const book = await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.book.update({
+        where: { id },
+        data: {
+          ...(dto.title !== undefined ? { title: dto.title } : {}),
+          ...(dto.price !== undefined ? { price: dto.price } : {}),
+          ...(dto.available !== undefined ? { available: dto.available } : {}),
+          ...(dto.authorId !== undefined ? { authorId: dto.authorId } : {}),
+          ...(dto.publisherId !== undefined
+            ? { publisherId: dto.publisherId }
+            : {}),
+          ...(dto.genreId !== undefined ? { genreId: dto.genreId } : {}),
+        },
+        include: bookInclude,
+      });
+
+      await this.auditService.log(tx, {
+        userId,
+        action: AuditAction.UPDATE,
+        entity: BOOK_ENTITY,
+        entityId: id,
+      });
+
+      return updated;
     });
 
     return toBookResponse(book as BookWithRelations);
   }
 
-  async remove(id: string): Promise<void> {
+  async remove(id: string, userId: string): Promise<void> {
     await this.findActiveOrThrow(id);
 
-    await this.prisma.book.update({
-      where: { id },
-      data: { deletedAt: new Date() },
+    await this.prisma.$transaction(async (tx) => {
+      await tx.book.update({
+        where: { id },
+        data: { deletedAt: new Date() },
+      });
+
+      await this.auditService.log(tx, {
+        userId,
+        action: AuditAction.DELETE,
+        entity: BOOK_ENTITY,
+        entityId: id,
+      });
     });
   }
 
   async uploadImage(
     id: string,
     file: ValidatedImageFile,
+    userId: string,
   ): Promise<BookResponse> {
     const book = await this.findActiveOrThrow(id);
     const previousPath = book.imagePath;
@@ -129,10 +169,22 @@ export class BooksService {
     await this.fileStorage.write(relativePath, file.buffer);
 
     try {
-      const updated = await this.prisma.book.update({
-        where: { id },
-        data: { imagePath: relativePath },
-        include: bookInclude,
+      const updated = await this.prisma.$transaction(async (tx) => {
+        const result = await tx.book.update({
+          where: { id },
+          data: { imagePath: relativePath },
+          include: bookInclude,
+        });
+
+        await this.auditService.log(tx, {
+          userId,
+          action: AuditAction.UPDATE,
+          entity: BOOK_ENTITY,
+          entityId: id,
+          metadata: { imagePath: relativePath },
+        });
+
+        return result;
       });
 
       await this.fileStorage.deleteIfExists(previousPath);
