@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider } from '../features/auth/auth-context';
 import { ProtectedRoute } from '../features/auth/components/ProtectedRoute';
@@ -6,6 +7,15 @@ import { BookCreatePage } from '../features/books/pages/BookCreatePage';
 import { BookDetailPage } from '../features/books/pages/BookDetailPage';
 import { BookEditPage } from '../features/books/pages/BookEditPage';
 import { BooksListPage } from '../features/books/pages/BooksListPage';
+import { AppLayout } from './AppLayout';
+
+function ProtectedApp({ children }: { children: ReactNode }) {
+  return (
+    <ProtectedRoute>
+      <AppLayout>{children}</AppLayout>
+    </ProtectedRoute>
+  );
+}
 
 export function AppRoutes() {
   return (
@@ -17,33 +27,33 @@ export function AppRoutes() {
         <Route
           path="/books"
           element={
-            <ProtectedRoute>
+            <ProtectedApp>
               <BooksListPage />
-            </ProtectedRoute>
+            </ProtectedApp>
           }
         />
         <Route
           path="/books/new"
           element={
-            <ProtectedRoute>
+            <ProtectedApp>
               <BookCreatePage />
-            </ProtectedRoute>
+            </ProtectedApp>
           }
         />
         <Route
           path="/books/:id/edit"
           element={
-            <ProtectedRoute>
+            <ProtectedApp>
               <BookEditPage />
-            </ProtectedRoute>
+            </ProtectedApp>
           }
         />
         <Route
           path="/books/:id"
           element={
-            <ProtectedRoute>
+            <ProtectedApp>
               <BookDetailPage />
-            </ProtectedRoute>
+            </ProtectedApp>
           }
         />
         <Route path="*" element={<Navigate to="/" replace />} />

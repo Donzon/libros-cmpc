@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
 import { HttpError } from '../../../shared/api/http-client';
 import {
   ErrorState,
@@ -102,11 +103,13 @@ export function BookCreatePage() {
   }
 
   return (
-    <main>
+    <main className="grid gap-6">
       <p>
-        <Link to="/books">← Volver al listado</Link>
+        <Button variant="link" asChild className="h-auto p-0">
+          <Link to="/books">← Volver al listado</Link>
+        </Button>
       </p>
-      <h1>Nuevo libro</h1>
+      <h1 className="text-2xl font-semibold text-foreground">Nuevo libro</h1>
 
       {lookupsLoading && !authorsQuery.data ? (
         <LoadingState message="Cargando catálogos…" />

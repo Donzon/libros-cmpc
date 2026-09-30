@@ -10,7 +10,7 @@ Plan de implementación a partir de [`requirements.md`](./requirements.md) y [`d
 |-----|-------------|
 | **P0** | Núcleo: B2, B3, DB1, DB2, F1, F2, F3, T3, O1, DOC1 |
 | **P1** | B4, B5, B6, DB4, F2.4, F3.2, DOC2–DOC4 |
-| **P2** | Mejoras (refresh, dashboard, CI/CD, caché) — solo documentar si no hay tiempo |
+| **P2** | Mejoras (refresh, dashboard, CI/CD, caché, estilo visual) — solo documentar si no hay tiempo |
 
 ---
 
@@ -38,6 +38,7 @@ Plan de implementación a partir de [`requirements.md`](./requirements.md) y [`d
 | [T18](#t18--cobertura--80--y-reportes) | P0 | Cobertura ≥ 80 % y reportes |
 | [T19](#t19--documentación-readme-swagger-diagramas-pending) | P0/P1 | Documentación: README, Swagger, diagramas, pending |
 | [T20](#t20--logginginterceptor-global-y-error-boundary-de-react) | P1 | LoggingInterceptor global y Error Boundary de React |
+| [T21](#t21--estilo-visual-tailwind-shadcnui-y-paleta-cmpc) | P2 | Estilo visual: Tailwind, shadcn/ui y paleta CMPC |
 
 ---
 
@@ -470,6 +471,32 @@ Plan de implementación a partir de [`requirements.md`](./requirements.md) y [`d
   2. Los errores siguen respondiendo con el formato del `HttpExceptionFilter`.
   3. El `ErrorBoundary` envuelve el router; un throw en render muestra fallback, no pantalla en blanco.
   4. Tests de esta tarea en verde y cobertura global sigue ≥ 80 % (REQ-T3).
+
+---
+
+## T21 — Estilo visual: Tailwind, shadcn/ui y paleta CMPC
+
+- **Prioridad:** P2
+- **REQ:** capa visual de REQ-F1–F5 (no cambia contratos de API ni flujos)
+- **Depende de:** T13, T14, T15, T16, T17 (pantallas a estilizar), T20 (Error Boundary)
+- **Archivos principales:**
+  - `frontend/vite.config.ts` (plugin `@tailwindcss/vite`)
+  - `frontend/src/index.css` (variables CSS del tema)
+  - `frontend/src/components/ui/**` (primitivos shadcn/ui)
+  - `frontend/src/app/AppHeader.tsx`, `AppLayout.tsx`
+  - Páginas y formularios existentes (`LoginPage`, listado, filtros, `BookForm`, detalle, estados de UI)
+- **Incluye tests:**
+  - Unit: las variables CSS del tema definen primario `#5B9A3C` y texto/encabezados `#4A4A4A`.
+  - Testing Library: el header autenticado muestra “CMPC Libros” y el botón de cerrar sesión; el click llama a `logout`.
+  - Los tests de T13–T17 siguen en verde (si hay que tocar selectores, sin cambiar lo que verifican).
+- **Criterio de terminado:**
+  1. Tailwind CSS está instalado y configurado con el plugin de Vite; shadcn/ui inicializado.
+  2. Paleta CMPC en variables CSS: verde `#5B9A3C` primario; gris `#4A4A4A` para texto y encabezados.
+  3. Header con “CMPC Libros” y cerrar sesión en rutas autenticadas.
+  4. Login centrado en una card; listado con tabla shadcn; filtros y formularios con inputs/selects del design system; botones consistentes.
+  5. Estados loading / vacío / error con estilo; layout responsive básico.
+  6. Sin cambios de lógica ni de llamadas a la API.
+  7. Tests de esta tarea y los existentes en verde.
 
 ---
 

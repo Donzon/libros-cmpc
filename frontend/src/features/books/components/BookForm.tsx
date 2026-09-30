@@ -1,6 +1,10 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select } from '@/components/ui/select';
 import type { LookupItem } from '../api/lookups.api';
 import {
   bookFormSchema,
@@ -85,10 +89,11 @@ export function BookForm({
       })}
       noValidate
       data-testid="book-form"
+      className="grid max-w-xl gap-4"
     >
-      <div>
-        <label htmlFor="title">Título</label>
-        <input
+      <div className="grid gap-2">
+        <Label htmlFor="title">Título</Label>
+        <Input
           id="title"
           type="text"
           disabled={fieldsDisabled}
@@ -96,15 +101,15 @@ export function BookForm({
           {...register('title')}
         />
         {errors.title ? (
-          <p role="alert" data-testid="error-title">
+          <p role="alert" data-testid="error-title" className="text-sm text-destructive">
             {errors.title.message}
           </p>
         ) : null}
       </div>
 
-      <div>
-        <label htmlFor="price">Precio</label>
-        <input
+      <div className="grid gap-2">
+        <Label htmlFor="price">Precio</Label>
+        <Input
           id="price"
           type="text"
           inputMode="decimal"
@@ -113,27 +118,26 @@ export function BookForm({
           {...register('price')}
         />
         {errors.price ? (
-          <p role="alert" data-testid="error-price">
+          <p role="alert" data-testid="error-price" className="text-sm text-destructive">
             {errors.price.message}
           </p>
         ) : null}
       </div>
 
-      <div>
-        <label htmlFor="available">
-          <input
-            id="available"
-            type="checkbox"
-            disabled={fieldsDisabled}
-            {...register('available')}
-          />{' '}
-          Disponible
-        </label>
+      <div className="flex items-center gap-2">
+        <input
+          id="available"
+          type="checkbox"
+          className="size-4 accent-primary"
+          disabled={fieldsDisabled}
+          {...register('available')}
+        />
+        <Label htmlFor="available">Disponible</Label>
       </div>
 
-      <div>
-        <label htmlFor="authorId">Autor</label>
-        <select
+      <div className="grid gap-2">
+        <Label htmlFor="authorId">Autor</Label>
+        <Select
           id="authorId"
           disabled={fieldsDisabled}
           aria-invalid={errors.authorId ? true : undefined}
@@ -145,17 +149,17 @@ export function BookForm({
               {author.name}
             </option>
           ))}
-        </select>
+        </Select>
         {errors.authorId ? (
-          <p role="alert" data-testid="error-authorId">
+          <p role="alert" data-testid="error-authorId" className="text-sm text-destructive">
             {errors.authorId.message}
           </p>
         ) : null}
       </div>
 
-      <div>
-        <label htmlFor="publisherId">Editorial</label>
-        <select
+      <div className="grid gap-2">
+        <Label htmlFor="publisherId">Editorial</Label>
+        <Select
           id="publisherId"
           disabled={fieldsDisabled}
           aria-invalid={errors.publisherId ? true : undefined}
@@ -167,17 +171,17 @@ export function BookForm({
               {publisher.name}
             </option>
           ))}
-        </select>
+        </Select>
         {errors.publisherId ? (
-          <p role="alert" data-testid="error-publisherId">
+          <p role="alert" data-testid="error-publisherId" className="text-sm text-destructive">
             {errors.publisherId.message}
           </p>
         ) : null}
       </div>
 
-      <div>
-        <label htmlFor="genreId">Género</label>
-        <select
+      <div className="grid gap-2">
+        <Label htmlFor="genreId">Género</Label>
+        <Select
           id="genreId"
           disabled={fieldsDisabled}
           aria-invalid={errors.genreId ? true : undefined}
@@ -189,9 +193,9 @@ export function BookForm({
               {genre.name}
             </option>
           ))}
-        </select>
+        </Select>
         {errors.genreId ? (
-          <p role="alert" data-testid="error-genreId">
+          <p role="alert" data-testid="error-genreId" className="text-sm text-destructive">
             {errors.genreId.message}
           </p>
         ) : null}
@@ -211,20 +215,20 @@ export function BookForm({
       ) : null}
 
       {lookupsError ? (
-        <p role="alert" data-testid="book-form-lookups-error">
+        <p role="alert" data-testid="book-form-lookups-error" className="text-sm text-destructive">
           {lookupsError}
         </p>
       ) : null}
 
       {formError ? (
-        <p role="alert" data-testid="book-form-error">
+        <p role="alert" data-testid="book-form-error" className="text-sm text-destructive">
           {formError}
         </p>
       ) : null}
 
-      <button type="submit" disabled={submitDisabled}>
+      <Button type="submit" disabled={submitDisabled}>
         {isSubmitting ? 'Guardando…' : submitLabel}
-      </button>
+      </Button>
     </form>
   );
 }

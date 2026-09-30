@@ -1,4 +1,10 @@
 import { Link, useParams } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+} from '@/components/ui/card';
 import { HttpError } from '../../../shared/api/http-client';
 import {
   EmptyState,
@@ -33,9 +39,11 @@ export function BookDetailPage() {
   const imageSrc = book ? resolveBookImageSrc(book.imageUrl) : null;
 
   return (
-    <main data-testid="book-detail-page">
+    <main data-testid="book-detail-page" className="grid gap-6">
       <p>
-        <Link to="/books">← Volver al listado</Link>
+        <Button variant="link" asChild className="h-auto p-0">
+          <Link to="/books">← Volver al listado</Link>
+        </Button>
       </p>
 
       {showLoading ? <LoadingState message="Cargando libro…" /> : null}
@@ -54,54 +62,72 @@ export function BookDetailPage() {
       ) : null}
 
       {book ? (
-        <article data-testid="book-detail">
-          <h1>{book.title}</h1>
-          {imageSrc ? (
-            <p>
-              <img
-                src={imageSrc}
-                alt={`Portada de ${book.title}`}
-                data-testid="book-detail-image"
-              />
-            </p>
-          ) : (
-            <p data-testid="book-detail-no-image">Sin imagen</p>
-          )}
-          <dl>
-            <div>
-              <dt>Precio</dt>
-              <dd data-testid="book-detail-price">{book.price}</dd>
-            </div>
-            <div>
-              <dt>Disponibilidad</dt>
-              <dd data-testid="book-detail-available">
-                {formatAvailability(book.available)}
-              </dd>
-            </div>
-            <div>
-              <dt>Autor</dt>
-              <dd data-testid="book-detail-author">{book.author.name}</dd>
-            </div>
-            <div>
-              <dt>Editorial</dt>
-              <dd data-testid="book-detail-publisher">
-                {book.publisher.name}
-              </dd>
-            </div>
-            <div>
-              <dt>Género</dt>
-              <dd data-testid="book-detail-genre">{book.genre.name}</dd>
-            </div>
-          </dl>
-          <p>
-            <Link
-              to={`/books/${book.id}/edit`}
-              data-testid="book-detail-edit-link"
-            >
-              Editar
-            </Link>
-          </p>
-        </article>
+        <Card>
+          <article data-testid="book-detail">
+            <CardHeader className="gap-4">
+              <h1 className="text-2xl font-semibold text-foreground">
+                {book.title}
+              </h1>
+              {imageSrc ? (
+                <p>
+                  <img
+                    src={imageSrc}
+                    alt={`Portada de ${book.title}`}
+                    data-testid="book-detail-image"
+                    className="max-h-72 rounded-lg border object-contain"
+                  />
+                </p>
+              ) : (
+                <p
+                  data-testid="book-detail-no-image"
+                  className="text-sm text-muted-foreground"
+                >
+                  Sin imagen
+                </p>
+              )}
+            </CardHeader>
+            <CardContent>
+              <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <dt className="text-sm text-muted-foreground">Precio</dt>
+                  <dd data-testid="book-detail-price">{book.price}</dd>
+                </div>
+                <div>
+                  <dt className="text-sm text-muted-foreground">
+                    Disponibilidad
+                  </dt>
+                  <dd data-testid="book-detail-available">
+                    {formatAvailability(book.available)}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-sm text-muted-foreground">Autor</dt>
+                  <dd data-testid="book-detail-author">{book.author.name}</dd>
+                </div>
+                <div>
+                  <dt className="text-sm text-muted-foreground">Editorial</dt>
+                  <dd data-testid="book-detail-publisher">
+                    {book.publisher.name}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-sm text-muted-foreground">Género</dt>
+                  <dd data-testid="book-detail-genre">{book.genre.name}</dd>
+                </div>
+              </dl>
+              <p className="mt-6">
+                <Button asChild>
+                  <Link
+                    to={`/books/${book.id}/edit`}
+                    data-testid="book-detail-edit-link"
+                  >
+                    Editar
+                  </Link>
+                </Button>
+              </p>
+            </CardContent>
+          </article>
+        </Card>
       ) : null}
     </main>
   );

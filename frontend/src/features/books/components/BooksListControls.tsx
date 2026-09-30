@@ -1,3 +1,6 @@
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select } from '@/components/ui/select';
 import type { LookupItem } from '../api/lookups.api';
 import type { BookSortBy, BookSortOrder } from '../api/books.api';
 import { BOOK_SORT_BY } from '../api/books.api';
@@ -47,10 +50,14 @@ export function BooksListControls({
   onSortOrderChange,
 }: BooksListControlsProps) {
   return (
-    <section aria-label="Filtros y ordenamiento" data-testid="books-filters">
-      <div>
-        <label htmlFor="books-search">Buscar por título</label>
-        <input
+    <section
+      aria-label="Filtros y ordenamiento"
+      data-testid="books-filters"
+      className="grid grid-cols-1 gap-4 rounded-xl border bg-card p-4 sm:grid-cols-2 lg:grid-cols-4"
+    >
+      <div className="grid gap-2">
+        <Label htmlFor="books-search">Buscar por título</Label>
+        <Input
           id="books-search"
           type="search"
           value={filters.searchInput}
@@ -60,9 +67,9 @@ export function BooksListControls({
         />
       </div>
 
-      <div>
-        <label htmlFor="books-filter-genre">Género</label>
-        <select
+      <div className="grid gap-2">
+        <Label htmlFor="books-filter-genre">Género</Label>
+        <Select
           id="books-filter-genre"
           value={filters.genreId}
           onChange={(event) => onGenreChange(event.target.value)}
@@ -74,12 +81,12 @@ export function BooksListControls({
               {genre.name}
             </option>
           ))}
-        </select>
+        </Select>
       </div>
 
-      <div>
-        <label htmlFor="books-filter-publisher">Editorial</label>
-        <select
+      <div className="grid gap-2">
+        <Label htmlFor="books-filter-publisher">Editorial</Label>
+        <Select
           id="books-filter-publisher"
           value={filters.publisherId}
           onChange={(event) => onPublisherChange(event.target.value)}
@@ -91,12 +98,12 @@ export function BooksListControls({
               {publisher.name}
             </option>
           ))}
-        </select>
+        </Select>
       </div>
 
-      <div>
-        <label htmlFor="books-filter-author">Autor</label>
-        <select
+      <div className="grid gap-2">
+        <Label htmlFor="books-filter-author">Autor</Label>
+        <Select
           id="books-filter-author"
           value={filters.authorId}
           onChange={(event) => onAuthorChange(event.target.value)}
@@ -108,12 +115,12 @@ export function BooksListControls({
               {author.name}
             </option>
           ))}
-        </select>
+        </Select>
       </div>
 
-      <div>
-        <label htmlFor="books-filter-available">Disponibilidad</label>
-        <select
+      <div className="grid gap-2">
+        <Label htmlFor="books-filter-available">Disponibilidad</Label>
+        <Select
           id="books-filter-available"
           value={filters.available}
           onChange={(event) =>
@@ -124,12 +131,12 @@ export function BooksListControls({
           <option value="">Todas</option>
           <option value="true">Disponible</option>
           <option value="false">No disponible</option>
-        </select>
+        </Select>
       </div>
 
-      <div>
-        <label htmlFor="books-sort-by">Ordenar por</label>
-        <select
+      <div className="grid gap-2">
+        <Label htmlFor="books-sort-by">Ordenar por</Label>
+        <Select
           id="books-sort-by"
           value={filters.sortBy}
           onChange={(event) =>
@@ -142,12 +149,12 @@ export function BooksListControls({
               {SORT_BY_LABELS[field]}
             </option>
           ))}
-        </select>
+        </Select>
       </div>
 
-      <div>
-        <label htmlFor="books-sort-order">Dirección</label>
-        <select
+      <div className="grid gap-2">
+        <Label htmlFor="books-sort-order">Dirección</Label>
+        <Select
           id="books-sort-order"
           value={filters.sortOrder}
           onChange={(event) =>
@@ -157,7 +164,7 @@ export function BooksListControls({
         >
           <option value="asc">Ascendente</option>
           <option value="desc">Descendente</option>
-        </select>
+        </Select>
       </div>
     </section>
   );

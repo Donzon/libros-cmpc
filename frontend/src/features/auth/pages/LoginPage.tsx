@@ -1,5 +1,14 @@
 import { useState, type FormEvent } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+} from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { HttpError } from '../../../shared/api/http-client';
 import { useAuth } from '../hooks/useAuth';
 
@@ -55,44 +64,58 @@ export function LoginPage() {
   }
 
   return (
-    <main>
-      <h1>Login</h1>
-      <form onSubmit={handleSubmit} noValidate>
-        <div>
-          <label htmlFor="email">Email</label>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            autoComplete="username"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            disabled={submitting}
-          />
-        </div>
-        <div>
-          <label htmlFor="password">Contraseña</label>
-          <input
-            id="password"
-            name="password"
-            type="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            disabled={submitting}
-          />
-        </div>
-        {error ? (
-          <p role="alert" data-testid="login-error">
-            {error}
-          </p>
-        ) : null}
-        <button type="submit" disabled={submitting}>
-          {submitting ? 'Ingresando…' : 'Ingresar'}
-        </button>
-      </form>
+    <main className="flex min-h-screen items-center justify-center bg-background p-4">
+      <Card className="w-full max-w-md" data-testid="login-card">
+        <CardHeader>
+          <p className="text-sm font-medium text-primary">CMPC Libros</p>
+          <h1 className="text-2xl font-semibold text-foreground">Login</h1>
+          <CardDescription>
+            Ingresa con tu cuenta para continuar.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} noValidate className="grid gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                autoComplete="username"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                disabled={submitting}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="password">Contraseña</Label>
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                disabled={submitting}
+              />
+            </div>
+            {error ? (
+              <p
+                role="alert"
+                data-testid="login-error"
+                className="rounded-lg border border-destructive/30 px-2.5 py-2 text-sm text-destructive"
+              >
+                {error}
+              </p>
+            ) : null}
+            <Button type="submit" disabled={submitting}>
+              {submitting ? 'Ingresando…' : 'Ingresar'}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </main>
   );
 }

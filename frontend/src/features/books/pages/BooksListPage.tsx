@@ -1,5 +1,14 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import {
   DEFAULT_DEBOUNCE_MS,
   useDebouncedValue,
@@ -105,13 +114,15 @@ export function BooksListPage() {
   const showInitialLoading = isLoading && !data;
 
   return (
-    <main>
-      <h1>Libros</h1>
-      <p>
-        <Link to="/books/new" data-testid="books-new-link">
-          Nuevo libro
-        </Link>
-      </p>
+    <main className="grid gap-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-2xl font-semibold text-foreground">Libros</h1>
+        <Button asChild>
+          <Link to="/books/new" data-testid="books-new-link">
+            Nuevo libro
+          </Link>
+        </Button>
+      </div>
 
       <BooksListControls
         filters={filters}
@@ -150,63 +161,74 @@ export function BooksListPage() {
 
       {!showInitialLoading && !isError && data && data.data.length > 0 ? (
         <>
-          <p data-testid="books-total">
+          <p data-testid="books-total" className="text-sm text-muted-foreground">
             Total: {data.meta.total}
             {isFetching ? ' (actualizando…)' : null}
           </p>
-          <table>
-            <thead>
-              <tr>
-                <th scope="col">Título</th>
-                <th scope="col">Autor</th>
-                <th scope="col">Editorial</th>
-                <th scope="col">Género</th>
-                <th scope="col">Precio</th>
-                <th scope="col">Disponibilidad</th>
-                <th scope="col">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.data.map((book) => (
-                <tr key={book.id}>
-                  <td>
-                    <Link
-                      to={`/books/${book.id}`}
-                      data-testid={`books-detail-${book.id}`}
-                    >
-                      {book.title}
-                    </Link>
-                  </td>
-                  <td>{book.author.name}</td>
-                  <td>{book.publisher.name}</td>
-                  <td>{book.genre.name}</td>
-                  <td>{book.price}</td>
-                  <td>{formatAvailability(book.available)}</td>
-                  <td>
-                    <Link
-                      to={`/books/${book.id}/edit`}
-                      data-testid={`books-edit-${book.id}`}
-                    >
-                      Editar
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <nav aria-label="Paginación" data-testid="books-pagination">
-            <button
+          <div className="rounded-xl border bg-card">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead scope="col">Título</TableHead>
+                  <TableHead scope="col">Autor</TableHead>
+                  <TableHead scope="col">Editorial</TableHead>
+                  <TableHead scope="col">Género</TableHead>
+                  <TableHead scope="col">Precio</TableHead>
+                  <TableHead scope="col">Disponibilidad</TableHead>
+                  <TableHead scope="col">Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {data.data.map((book) => (
+                  <TableRow key={book.id}>
+                    <TableCell>
+                      <Link
+                        to={`/books/${book.id}`}
+                        data-testid={`books-detail-${book.id}`}
+                        className="font-medium text-primary hover:underline"
+                      >
+                        {book.title}
+                      </Link>
+                    </TableCell>
+                    <TableCell>{book.author.name}</TableCell>
+                    <TableCell>{book.publisher.name}</TableCell>
+                    <TableCell>{book.genre.name}</TableCell>
+                    <TableCell>{book.price}</TableCell>
+                    <TableCell>{formatAvailability(book.available)}</TableCell>
+                    <TableCell>
+                      <Button variant="link" asChild className="h-auto p-0">
+                        <Link
+                          to={`/books/${book.id}/edit`}
+                          data-testid={`books-edit-${book.id}`}
+                        >
+                          Editar
+                        </Link>
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          <nav
+            aria-label="Paginación"
+            data-testid="books-pagination"
+            className="flex flex-col items-center gap-3 sm:flex-row sm:justify-between"
+          >
+            <Button
               type="button"
+              variant="outline"
               disabled={page <= 1 || isFetching}
               onClick={() => setPage((current) => Math.max(1, current - 1))}
             >
               Anterior
-            </button>
-            <span data-testid="books-page-info">
+            </Button>
+            <span data-testid="books-page-info" className="text-sm text-muted-foreground">
               Página {data.meta.page} de {data.meta.totalPages}
             </span>
-            <button
+            <Button
               type="button"
+              variant="outline"
               disabled={page >= data.meta.totalPages || isFetching}
               onClick={() =>
                 setPage((current) =>
@@ -215,7 +237,7 @@ export function BooksListPage() {
               }
             >
               Siguiente
-            </button>
+            </Button>
           </nav>
         </>
       ) : null}

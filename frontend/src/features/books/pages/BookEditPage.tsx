@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
 import { HttpError } from '../../../shared/api/http-client';
 import {
   ErrorState,
@@ -124,13 +125,17 @@ export function BookEditPage() {
     : EMPTY_BOOK_FORM_VALUES;
 
   return (
-    <main>
-      <p>
-        <Link to={`/books/${id ?? ''}`}>← Volver al detalle</Link>
-        {' · '}
-        <Link to="/books">Listado</Link>
+    <main className="grid gap-6">
+      <p className="flex flex-wrap items-center gap-2">
+        <Button variant="link" asChild className="h-auto p-0">
+          <Link to={`/books/${id ?? ''}`}>← Volver al detalle</Link>
+        </Button>
+        <span className="text-muted-foreground">·</span>
+        <Button variant="link" asChild className="h-auto p-0">
+          <Link to="/books">Listado</Link>
+        </Button>
       </p>
-      <h1>Editar libro</h1>
+      <h1 className="text-2xl font-semibold text-foreground">Editar libro</h1>
 
       {showBookLoading || (lookupsLoading && !authorsQuery.data) ? (
         <LoadingState message="Cargando libro…" />
