@@ -7,15 +7,6 @@ export function HomePage() {
   );
 }
 
-export function LoginPage() {
-  return (
-    <main>
-      <h1>Login</h1>
-      <p>Placeholder — UI de autenticación en T13</p>
-    </main>
-  );
-}
-
 export function BooksPlaceholderPage() {
   return (
     <main>
