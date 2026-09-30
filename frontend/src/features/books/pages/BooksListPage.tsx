@@ -169,7 +169,14 @@ export function BooksListPage() {
             <tbody>
               {data.data.map((book) => (
                 <tr key={book.id}>
-                  <td>{book.title}</td>
+                  <td>
+                    <Link
+                      to={`/books/${book.id}`}
+                      data-testid={`books-detail-${book.id}`}
+                    >
+                      {book.title}
+                    </Link>
+                  </td>
                   <td>{book.author.name}</td>
                   <td>{book.publisher.name}</td>
                   <td>{book.genre.name}</td>

@@ -6,7 +6,10 @@ import {
   LoadingState,
 } from '../../../shared/ui/query-states';
 import { BookForm } from '../components/BookForm';
-import { useCreateBookMutation } from '../hooks/useBookMutations';
+import {
+  useCreateBookMutation,
+  useUploadBookImageMutation,
+} from '../hooks/useBookMutations';
 import {
   useAuthorsQuery,
   useGenresQuery,
@@ -14,10 +17,27 @@ import {
 } from '../hooks/useLookupsQueries';
 import type { BookFormValues } from '../schemas/book.schema';
 
+function uploadErrorMessage(err: unknown): string {
+  if (err instanceof HttpError) {
+    return err.message;
+  }
+  return 'No se pudo subir la imagen. Puedes reintentar solo la subida.';
+}
+
 export function BookCreatePage() {
   const navigate = useNavigate();
   const createMutation = useCreateBookMutation();
+  const uploadMutation = useUploadBookImageMutation();
   const [formError, setFormError] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [imageValidationError, setImageValidationError] = useState<
+    string | null
+  >(null);
+  const [pendingUpload, setPendingUpload] = useState<{
+    bookId: string;
+    file: File;
+  } | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   const authorsQuery = useAuthorsQuery();
   const publishersQuery = usePublishersQuery();
@@ -33,11 +53,45 @@ export function BookCreatePage() {
       ? 'No se pudieron cargar autores, editoriales o géneros.'
       : null;
 
-  async function handleSubmit(values: BookFormValues) {
-    setFormError(null);
+  async function handleRetryUpload() {
+    if (!pendingUpload) {
+      return;
+    }
+    setUploadError(null);
     try {
-      await createMutation.mutateAsync(values);
-      void navigate('/books');
+      await uploadMutation.mutateAsync({
+        id: pendingUpload.bookId,
+        file: pendingUpload.file,
+      });
+      setPendingUpload(null);
+      void navigate(`/books/${pendingUpload.bookId}`);
+    } catch (err) {
+      setUploadError(uploadErrorMessage(err));
+    }
+  }
+
+  async function handleSubmit(values: BookFormValues) {
+    if (pendingUpload) {
+      return;
+    }
+    setFormError(null);
+    setUploadError(null);
+    try {
+      const book = await createMutation.mutateAsync(values);
+      if (!selectedFile) {
+        void navigate(`/books/${book.id}`);
+        return;
+      }
+      try {
+        await uploadMutation.mutateAsync({
+          id: book.id,
+          file: selectedFile,
+        });
+        void navigate(`/books/${book.id}`);
+      } catch (err) {
+        setPendingUpload({ bookId: book.id, file: selectedFile });
+        setUploadError(uploadErrorMessage(err));
+      }
     } catch (err) {
       if (err instanceof HttpError) {
         setFormError(err.message);
@@ -73,6 +127,21 @@ export function BookCreatePage() {
           submitLabel="Crear libro"
           onSubmit={handleSubmit}
           formError={formError}
+          selectedFile={selectedFile}
+          onSelectedFileChange={setSelectedFile}
+          imageValidationError={imageValidationError}
+          onImageValidationErrorChange={setImageValidationError}
+          uploadRetry={
+            pendingUpload
+              ? {
+                  message:
+                    uploadError ??
+                    'El libro se creó, pero falló la subida de la imagen.',
+                  onRetry: handleRetryUpload,
+                  isRetrying: uploadMutation.isPending,
+                }
+              : null
+          }
         />
       ) : null}
     </main>

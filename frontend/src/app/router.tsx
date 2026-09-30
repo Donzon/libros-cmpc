@@ -3,6 +3,7 @@ import { AuthProvider } from '../features/auth/auth-context';
 import { ProtectedRoute } from '../features/auth/components/ProtectedRoute';
 import { LoginPage } from '../features/auth/pages/LoginPage';
 import { BookCreatePage } from '../features/books/pages/BookCreatePage';
+import { BookDetailPage } from '../features/books/pages/BookDetailPage';
 import { BookEditPage } from '../features/books/pages/BookEditPage';
 import { BooksListPage } from '../features/books/pages/BooksListPage';
 import { HomePage } from './pages/placeholders';
@@ -35,6 +36,14 @@ export function AppRouter() {
             element={
               <ProtectedRoute>
                 <BookEditPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/books/:id"
+            element={
+              <ProtectedRoute>
+                <BookDetailPage />
               </ProtectedRoute>
             }
           />

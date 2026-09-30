@@ -1,3 +1,4 @@
+import { getApiBaseUrl } from '../../../shared/api/http-client';
 import { http } from '../../../shared/api/http';
 
 export type BookRelation = {
@@ -115,4 +116,33 @@ export async function updateBook(
   payload: UpdateBookPayload,
 ): Promise<BookResponse> {
   return http.patch<BookResponse>(`/books/${id}`, payload);
+}
+
+export async function uploadBookImage(
+  id: string,
+  file: File,
+): Promise<BookResponse> {
+  const formData = new FormData();
+  formData.append('file', file);
+  return http.post<BookResponse>(`/books/${id}/image`, formData);
+}
+
+/**
+ * El backend expone `imageUrl` relativo al host (`/uploads/...`), fuera del prefijo `/api`.
+ */
+export function resolveBookImageSrc(
+  imageUrl: string | null | undefined,
+): string | null {
+  if (imageUrl == null || imageUrl.length === 0) {
+    return null;
+  }
+
+  if (/^https?:\/\//i.test(imageUrl)) {
+    return imageUrl;
+  }
+
+  const apiBase = getApiBaseUrl().replace(/\/$/, '');
+  const origin = apiBase.replace(/\/api$/i, '');
+  const path = imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`;
+  return `${origin}${path}`;
 }

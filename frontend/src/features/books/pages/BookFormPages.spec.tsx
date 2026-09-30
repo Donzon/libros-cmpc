@@ -9,6 +9,7 @@ import {
 import { QueryClient } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { AppQueryProvider } from '../../../shared/providers/query-client';
+import { HttpError } from '../../../shared/api/http-client';
 import { BookCreatePage } from './BookCreatePage';
 import { BookEditPage } from './BookEditPage';
 
@@ -19,6 +20,7 @@ vi.mock('../api/books.api', async (importOriginal) => {
     getBook: vi.fn(),
     createBook: vi.fn(),
     updateBook: vi.fn(),
+    uploadBookImage: vi.fn(),
   };
 });
 
@@ -32,6 +34,7 @@ import {
   createBook,
   getBook,
   updateBook,
+  uploadBookImage,
   type BookResponse,
 } from '../api/books.api';
 import {
@@ -43,6 +46,7 @@ import {
 const createBookMock = vi.mocked(createBook);
 const getBookMock = vi.mocked(getBook);
 const updateBookMock = vi.mocked(updateBook);
+const uploadBookImageMock = vi.mocked(uploadBookImage);
 const listAuthorsMock = vi.mocked(listAuthors);
 const listPublishersMock = vi.mocked(listPublishers);
 const listGenresMock = vi.mocked(listGenres);
@@ -92,14 +96,56 @@ function renderWithProviders(
           <Route path="/books" element={<p data-testid="books-list">Listado</p>} />
           <Route path="/books/new" element={ui} />
           <Route path="/books/:id/edit" element={ui} />
+          <Route
+            path="/books/:id"
+            element={<p data-testid="book-detail-stub">Detalle</p>}
+          />
         </Routes>
       </MemoryRouter>
     </AppQueryProvider>,
   );
 }
 
-describe('Book create/edit pages (T16)', () => {
+async function fillValidCreateForm() {
+  await screen.findByTestId('book-form');
+  await screen.findByRole('option', { name: 'Cervantes' });
+
+  fireEvent.change(screen.getByLabelText('Título'), {
+    target: { value: 'Nuevo título' },
+  });
+  fireEvent.change(screen.getByLabelText('Precio'), {
+    target: { value: '12.50' },
+  });
+  fireEvent.change(screen.getByLabelText('Autor'), {
+    target: { value: AUTHOR_ID },
+  });
+  fireEvent.change(screen.getByLabelText('Editorial'), {
+    target: { value: PUBLISHER_ID },
+  });
+  fireEvent.change(screen.getByLabelText('Género'), {
+    target: { value: GENRE_ID },
+  });
+
+  await waitFor(() => {
+    expect(
+      (screen.getByRole('button', { name: 'Crear libro' }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(false);
+  });
+}
+
+describe('Book create/edit pages (T16/T17)', () => {
   beforeEach(() => {
+    Object.defineProperty(URL, 'createObjectURL', {
+      configurable: true,
+      writable: true,
+      value: vi.fn(() => 'blob:mock-preview'),
+    });
+    Object.defineProperty(URL, 'revokeObjectURL', {
+      configurable: true,
+      writable: true,
+      value: vi.fn(),
+    });
     listAuthorsMock.mockResolvedValue([
       { id: AUTHOR_ID, name: 'Cervantes' },
     ]);
@@ -114,36 +160,11 @@ describe('Book create/edit pages (T16)', () => {
     vi.clearAllMocks();
   });
 
-  it('create llama POST /books y navega al listado', async () => {
+  it('create llama POST /books y navega al detalle', async () => {
     createBookMock.mockResolvedValue(createBookResponse());
 
     renderWithProviders(<BookCreatePage />, '/books/new');
-
-    await screen.findByTestId('book-form');
-    await screen.findByRole('option', { name: 'Cervantes' });
-
-    fireEvent.change(screen.getByLabelText('Título'), {
-      target: { value: 'Nuevo título' },
-    });
-    fireEvent.change(screen.getByLabelText('Precio'), {
-      target: { value: '12.50' },
-    });
-    fireEvent.change(screen.getByLabelText('Autor'), {
-      target: { value: AUTHOR_ID },
-    });
-    fireEvent.change(screen.getByLabelText('Editorial'), {
-      target: { value: PUBLISHER_ID },
-    });
-    fireEvent.change(screen.getByLabelText('Género'), {
-      target: { value: GENRE_ID },
-    });
-
-    await waitFor(() => {
-      expect(
-        (screen.getByRole('button', { name: 'Crear libro' }) as HTMLButtonElement)
-          .disabled,
-      ).toBe(false);
-    });
+    await fillValidCreateForm();
     fireEvent.click(screen.getByRole('button', { name: 'Crear libro' }));
 
     await waitFor(() => {
@@ -157,7 +178,8 @@ describe('Book create/edit pages (T16)', () => {
       });
     });
 
-    await screen.findByTestId('books-list');
+    expect(uploadBookImageMock).not.toHaveBeenCalled();
+    await screen.findByTestId('book-detail-stub');
   });
 
   it('edit carga valores iniciales y llama PATCH /books/:id', async () => {
@@ -213,7 +235,7 @@ describe('Book create/edit pages (T16)', () => {
       });
     });
 
-    await screen.findByTestId('books-list');
+    await screen.findByTestId('book-detail-stub');
   });
 
   it('los selects cargan lookups en create', async () => {
@@ -232,5 +254,43 @@ describe('Book create/edit pages (T16)', () => {
       expect(screen.getByRole('option', { name: 'Planeta' })).toBeTruthy();
       expect(screen.getByRole('option', { name: 'Clásico' })).toBeTruthy();
     });
+  });
+
+  it('si create ok y upload falla, muestra reintento sin segundo create (T17)', async () => {
+    const file = new File([new Uint8Array([0xff, 0xd8, 0xff])], 'cover.jpg', {
+      type: 'image/jpeg',
+    });
+    createBookMock.mockResolvedValue(createBookResponse());
+    uploadBookImageMock.mockRejectedValueOnce(
+      new HttpError(500, 'Upload failed'),
+    );
+    uploadBookImageMock.mockResolvedValueOnce(
+      createBookResponse({
+        imageUrl: '/uploads/books/x.jpg',
+      }),
+    );
+
+    renderWithProviders(<BookCreatePage />, '/books/new');
+    await fillValidCreateForm();
+
+    fireEvent.change(screen.getByTestId('book-image-input'), {
+      target: { files: [file] },
+    });
+    await screen.findByTestId('book-image-preview');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Crear libro' }));
+
+    await screen.findByTestId('book-image-upload-retry');
+    expect(createBookMock).toHaveBeenCalledTimes(1);
+    expect(uploadBookImageMock).toHaveBeenCalledTimes(1);
+    expect(uploadBookImageMock).toHaveBeenCalledWith(BOOK_ID, file);
+
+    fireEvent.click(screen.getByTestId('book-image-retry-button'));
+
+    await waitFor(() => {
+      expect(uploadBookImageMock).toHaveBeenCalledTimes(2);
+    });
+    expect(createBookMock).toHaveBeenCalledTimes(1);
+    await screen.findByTestId('book-detail-stub');
   });
 });

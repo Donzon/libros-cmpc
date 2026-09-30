@@ -1,10 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as httpModule from '../../../shared/api/http';
+import * as httpClient from '../../../shared/api/http-client';
 import {
   createBook,
   getBook,
   listBooks,
+  resolveBookImageSrc,
   updateBook,
+  uploadBookImage,
 } from './books.api';
 
 describe('listBooks', () => {
@@ -117,5 +120,51 @@ describe('books mutations (T16)', () => {
     await updateBook(id, payload);
 
     expect(patch).toHaveBeenCalledWith(`/books/${id}`, payload);
+  });
+
+  it('uploadBookImage POST /books/:id/image con FormData file (T17)', async () => {
+    const id = 'd1111111-1111-4111-8111-111111111111';
+    const file = new File([new Uint8Array([0xff, 0xd8, 0xff])], 'cover.jpg', {
+      type: 'image/jpeg',
+    });
+    const post = vi
+      .spyOn(httpModule.http, 'post')
+      .mockResolvedValue({ id, imageUrl: '/uploads/books/x.jpg' });
+
+    await uploadBookImage(id, file);
+
+    expect(post).toHaveBeenCalledTimes(1);
+    const [path, body] = post.mock.calls[0] as [string, FormData];
+    expect(path).toBe(`/books/${id}/image`);
+    expect(body).toBeInstanceOf(FormData);
+    expect(body.get('file')).toBe(file);
+  });
+});
+
+describe('resolveBookImageSrc (T17)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('devuelve null si no hay imageUrl', () => {
+    expect(resolveBookImageSrc(null)).toBeNull();
+    expect(resolveBookImageSrc(undefined)).toBeNull();
+    expect(resolveBookImageSrc('')).toBeNull();
+  });
+
+  it('resuelve /uploads relativo al origen del API (sin /api)', () => {
+    vi.spyOn(httpClient, 'getApiBaseUrl').mockReturnValue(
+      'http://localhost:3000/api',
+    );
+
+    expect(resolveBookImageSrc('/uploads/books/x.webp')).toBe(
+      'http://localhost:3000/uploads/books/x.webp',
+    );
+  });
+
+  it('deja URLs absolutas intactas', () => {
+    expect(resolveBookImageSrc('https://cdn.example/x.jpg')).toBe(
+      'https://cdn.example/x.jpg',
+    );
   });
 });

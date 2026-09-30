@@ -7,6 +7,10 @@ import {
   EMPTY_BOOK_FORM_VALUES,
   type BookFormValues,
 } from '../schemas/book.schema';
+import {
+  BookImageField,
+  type BookImageUploadRetry,
+} from './BookImageField';
 
 export type BookFormProps = {
   defaultValues?: BookFormValues;
@@ -18,6 +22,13 @@ export type BookFormProps = {
   formError?: string | null;
   lookupsLoading?: boolean;
   lookupsError?: string | null;
+  selectedFile?: File | null;
+  onSelectedFileChange?: (file: File | null) => void;
+  imageValidationError?: string | null;
+  onImageValidationErrorChange?: (error: string | null) => void;
+  existingImageUrl?: string | null;
+  uploadRetry?: BookImageUploadRetry | null;
+  submitDisabledExtra?: boolean;
 };
 
 export function BookForm({
@@ -30,6 +41,13 @@ export function BookForm({
   formError = null,
   lookupsLoading = false,
   lookupsError = null,
+  selectedFile = null,
+  onSelectedFileChange,
+  imageValidationError = null,
+  onImageValidationErrorChange,
+  existingImageUrl = null,
+  uploadRetry = null,
+  submitDisabledExtra = false,
 }: BookFormProps) {
   const [hasValidated, setHasValidated] = useState(false);
   const {
@@ -53,7 +71,12 @@ export function BookForm({
   const fieldsDisabled =
     isSubmitting || lookupsLoading || Boolean(lookupsError);
   const submitDisabled =
-    fieldsDisabled || !hasValidated || hasFieldErrors;
+    fieldsDisabled ||
+    !hasValidated ||
+    hasFieldErrors ||
+    Boolean(imageValidationError) ||
+    Boolean(uploadRetry) ||
+    submitDisabledExtra;
 
   return (
     <form
@@ -173,6 +196,19 @@ export function BookForm({
           </p>
         ) : null}
       </div>
+
+      {onSelectedFileChange != null &&
+      onImageValidationErrorChange != null ? (
+        <BookImageField
+          selectedFile={selectedFile}
+          onSelectedFileChange={onSelectedFileChange}
+          validationError={imageValidationError}
+          onValidationErrorChange={onImageValidationErrorChange}
+          existingImageUrl={existingImageUrl}
+          disabled={fieldsDisabled}
+          uploadRetry={uploadRetry}
+        />
+      ) : null}
 
       {lookupsError ? (
         <p role="alert" data-testid="book-form-lookups-error">

@@ -6,7 +6,10 @@ import {
   LoadingState,
 } from '../../../shared/ui/query-states';
 import { BookForm } from '../components/BookForm';
-import { useUpdateBookMutation } from '../hooks/useBookMutations';
+import {
+  useUpdateBookMutation,
+  useUploadBookImageMutation,
+} from '../hooks/useBookMutations';
 import { useBookQuery } from '../hooks/useBookQuery';
 import {
   useAuthorsQuery,
@@ -18,11 +21,28 @@ import {
   type BookFormValues,
 } from '../schemas/book.schema';
 
+function uploadErrorMessage(err: unknown): string {
+  if (err instanceof HttpError) {
+    return err.message;
+  }
+  return 'No se pudo subir la imagen. Puedes reintentar solo la subida.';
+}
+
 export function BookEditPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const updateMutation = useUpdateBookMutation();
+  const uploadMutation = useUploadBookImageMutation();
   const [formError, setFormError] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [imageValidationError, setImageValidationError] = useState<
+    string | null
+  >(null);
+  const [pendingUpload, setPendingUpload] = useState<{
+    bookId: string;
+    file: File;
+  } | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   const bookQuery = useBookQuery(id);
   const authorsQuery = useAuthorsQuery();
@@ -39,14 +59,42 @@ export function BookEditPage() {
       ? 'No se pudieron cargar autores, editoriales o géneros.'
       : null;
 
+  async function handleRetryUpload() {
+    if (!pendingUpload) {
+      return;
+    }
+    setUploadError(null);
+    try {
+      await uploadMutation.mutateAsync({
+        id: pendingUpload.bookId,
+        file: pendingUpload.file,
+      });
+      setPendingUpload(null);
+      void navigate(`/books/${pendingUpload.bookId}`);
+    } catch (err) {
+      setUploadError(uploadErrorMessage(err));
+    }
+  }
+
   async function handleSubmit(values: BookFormValues) {
-    if (!id) {
+    if (!id || pendingUpload) {
       return;
     }
     setFormError(null);
+    setUploadError(null);
     try {
       await updateMutation.mutateAsync({ id, payload: values });
-      void navigate('/books');
+      if (!selectedFile) {
+        void navigate(`/books/${id}`);
+        return;
+      }
+      try {
+        await uploadMutation.mutateAsync({ id, file: selectedFile });
+        void navigate(`/books/${id}`);
+      } catch (err) {
+        setPendingUpload({ bookId: id, file: selectedFile });
+        setUploadError(uploadErrorMessage(err));
+      }
     } catch (err) {
       if (err instanceof HttpError) {
         setFormError(err.message);
@@ -78,7 +126,9 @@ export function BookEditPage() {
   return (
     <main>
       <p>
-        <Link to="/books">← Volver al listado</Link>
+        <Link to={`/books/${id ?? ''}`}>← Volver al detalle</Link>
+        {' · '}
+        <Link to="/books">Listado</Link>
       </p>
       <h1>Editar libro</h1>
 
@@ -106,6 +156,22 @@ export function BookEditPage() {
           submitLabel="Guardar cambios"
           onSubmit={handleSubmit}
           formError={formError}
+          selectedFile={selectedFile}
+          onSelectedFileChange={setSelectedFile}
+          imageValidationError={imageValidationError}
+          onImageValidationErrorChange={setImageValidationError}
+          existingImageUrl={bookQuery.data.imageUrl}
+          uploadRetry={
+            pendingUpload
+              ? {
+                  message:
+                    uploadError ??
+                    'Los datos se guardaron, pero falló la subida de la imagen.',
+                  onRetry: handleRetryUpload,
+                  isRetrying: uploadMutation.isPending,
+                }
+              : null
+          }
         />
       ) : null}
     </main>
