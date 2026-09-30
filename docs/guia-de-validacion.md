@@ -83,25 +83,21 @@ Query params equivalentes en API: `page`, `limit`, `search`, `genreId`, `publish
 
 ## 5. Soft delete — REQ-B5, D4
 
-La SPA **no** tiene botón de eliminar ([`pending.md`](./pending.md) §11). Se prueba por API (Swagger o curl).
-
-```bash
-curl -X DELETE -H "Authorization: Bearer $TOKEN" \
-  -o /dev/null -w "%{http_code}\n" \
-  http://localhost:3000/api/books/<id>
-```
+En el detalle (`/books/:id`), **Eliminar** pide confirmación y llama `DELETE /api/books/:id`.
 
 | # | REQ | Qué hacer | Qué tiene que pasar |
 |---|-----|-----------|---------------------|
-| 5.1 | B5 | DELETE autenticado | **204**. |
-| 5.2 | B5, D4 | Listado, detalle y CSV | El libro **ya no aparece**. Detalle → 404. |
+| 5.1 | B5 | Confirmar en la SPA (o DELETE autenticado en Swagger) | **204**. Vuelve al listado. |
+| 5.2 | B5, D4 | Listado, detalle y CSV | El libro **ya no aparece**. Detalle → 404 / «no encontrado». |
 | 5.3 | D4 | SQL: `SELECT id, "deletedAt" FROM "Book" WHERE id = '<id>';` | La fila **sigue**; `deletedAt` está seteado. No es un `DELETE` físico. |
 
 ---
 
 ## 6. Exportación CSV — REQ-B4, A5
 
-Tampoco hay botón en la SPA. Desde Swagger (`GET /api/books/export/csv`, Authorize) o:
+En el listado, **Exportar CSV**. Respeta los filtros actuales (género, editorial, autor, disponibilidad, búsqueda, orden). No usa un `<a href>` directo: el cliente HTTP adjunta el Bearer.
+
+Alternativa: Swagger (`GET /api/books/export/csv`, Authorize) o:
 
 ```bash
 curl -H "Authorization: Bearer $TOKEN" \
@@ -226,4 +222,4 @@ Otros checks: `cd backend && npm run prisma:validate`, `./scripts/smoke-compose.
 | REQ-O1–O4 | Compose, seed, env, SPA | §1 |
 | REQ-DOC1–DOC5 | Docs | §11 |
 
-Lo que **no** está en el producto (botones de CSV/borrar, lectura REST de auditoría, refresh token, dashboard, etc.) está explicado en [`pending.md`](./pending.md) con cómo se implementaría.
+Lo que **no** está en el producto (lectura REST de auditoría, refresh token, dashboard, etc.) está explicado en [`pending.md`](./pending.md) con cómo se implementaría.

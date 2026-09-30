@@ -23,6 +23,7 @@ import {
   type BooksListFiltersState,
 } from '../components/BooksListControls';
 import type { ListBooksParams } from '../api/books.api';
+import { useExportBooksCsvMutation } from '../hooks/useBookMutations';
 import {
   DEFAULT_BOOKS_LIMIT,
   useBooksQuery,
@@ -110,18 +111,39 @@ export function BooksListPage() {
   const listParams = buildListParams(page, filters, debouncedSearch);
   const { data, isLoading, isError, error, refetch, isFetching } =
     useBooksQuery(listParams);
+  const exportCsvMutation = useExportBooksCsvMutation();
 
   const showInitialLoading = isLoading && !data;
+
+  const exportErrorMessage =
+    exportCsvMutation.isError
+      ? exportCsvMutation.error instanceof Error
+        ? exportCsvMutation.error.message
+        : 'No se pudo exportar el CSV.'
+      : null;
 
   return (
     <main className="grid gap-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-semibold text-foreground">Libros</h1>
-        <Button asChild>
-          <Link to="/books/new" data-testid="books-new-link">
-            Nuevo libro
-          </Link>
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            data-testid="books-export-csv"
+            disabled={exportCsvMutation.isPending}
+            onClick={() => {
+              exportCsvMutation.mutate(listParams);
+            }}
+          >
+            {exportCsvMutation.isPending ? 'Exportando…' : 'Exportar CSV'}
+          </Button>
+          <Button asChild>
+            <Link to="/books/new" data-testid="books-new-link">
+              Nuevo libro
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <BooksListControls
@@ -151,6 +173,15 @@ export function BooksListPage() {
           }
           onRetry={() => {
             void refetch();
+          }}
+        />
+      ) : null}
+
+      {exportErrorMessage ? (
+        <ErrorState
+          message={exportErrorMessage}
+          onRetry={() => {
+            exportCsvMutation.mutate(listParams);
           }}
         />
       ) : null}

@@ -113,10 +113,8 @@ Checklist paso a paso alineado a cada REQ: [`docs/guia-de-validacion.md`](./docs
    - Búsqueda por **título** mientras escribes, con debounce de ~300 ms (no dispara una petición por tecla).
 3. **Nuevo libro (`/books/new`)** y **edición (`/books/:id/edit`)**: un único formulario con validación en vivo por campo; el envío se bloquea mientras haya errores. La imagen es opcional (JPEG, PNG o WebP, máx. 2 MiB) y muestra vista previa.
    - Si el libro se guarda pero falla la subida de la imagen, la UI ofrece **reintentar solo la subida**, sin crear el libro otra vez.
-4. **Detalle (`/books/:id`)**: todos los datos del libro, incluida la imagen.
-5. **Exportar CSV y eliminar** están disponibles por API (Swagger o `curl`, ver [§5](#5-api-y-swagger)); la SPA aún no tiene botones para ellas (ver `docs/pending.md`).
-   - `GET /api/books/export/csv` acepta los mismos filtros que el listado.
-   - `DELETE /api/books/:id` es un soft delete: el libro deja de aparecer en listados, detalle y CSV, pero sigue en la base de datos con `deletedAt`.
+4. **Detalle (`/books/:id`)**: todos los datos del libro, incluida la imagen. **Eliminar** pide confirmación y hace soft delete: el libro deja de aparecer en listados, detalle y CSV, pero sigue en la base de datos con `deletedAt`.
+5. **Exportar CSV** (`/books`): el botón descarga el inventario con los **mismos filtros** del listado (el token va en el cliente HTTP; no es un link directo). El endpoint es `GET /api/books/export/csv`.
 
 ---
 
@@ -229,7 +227,7 @@ Detalle (capas Nest, flujo crear+imagen, **modelo relacional** e índices): [`do
 | Fuerza bruta | `@nestjs/throttler` en `POST /auth/login` (5/min → 429) | Mitiga ataques de diccionario sin penalizar el resto del API |
 | Precio | `Decimal(10,2)` en DB, serializado como string (`"19.99"`) | Evita errores de redondeo de float en dinero |
 | Borrado | Soft delete con `deletedAt` | Conserva historial y trazabilidad con la auditoría |
-| Auditoría | Tabla `AuditLog` append-only; `AuditService.log(tx, …)` recibe el cliente transaccional. Se **consulta** por SQL/Prisma Studio, no por la SPA | La auditoría se confirma o revierte junto con la operación; no hay rol admin ni endpoint de lectura (ver `docs/pending.md` §14) |
+| Auditoría | Tabla `AuditLog` append-only; `AuditService.log(tx, …)` recibe el cliente transaccional. Se **consulta** por SQL/Prisma Studio, no por la SPA | La auditoría se confirma o revierte junto con la operación; no hay rol admin ni endpoint de lectura (ver `docs/pending.md` §13) |
 | Búsqueda | `contains` case-insensitive solo sobre `title` | Alcance acotado en la spec; `pg_trgm` queda como evolución |
 | Consulta avanzada | Un builder de `where`/`orderBy` compartido por listado y CSV | Garantiza que el CSV respete exactamente los mismos filtros |
 | Imágenes | Endpoint multipart separado, validación por magic bytes (no por `Content-Type`), nombre `<bookId>-<timestamp>.<ext>`, se borra la anterior | No confiar en el cliente; nombres no adivinables por el usuario ni colisiones |

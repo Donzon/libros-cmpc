@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { AppQueryProvider } from '../../../shared/providers/query-client';
@@ -11,12 +11,14 @@ vi.mock('../api/books.api', async (importOriginal) => {
   return {
     ...actual,
     getBook: vi.fn(),
+    deleteBook: vi.fn(),
   };
 });
 
-import { getBook, type BookResponse } from '../api/books.api';
+import { deleteBook, getBook, type BookResponse } from '../api/books.api';
 
 const getBookMock = vi.mocked(getBook);
+const deleteBookMock = vi.mocked(deleteBook);
 
 const AUTHOR_ID = 'a1111111-1111-4111-8111-111111111111';
 const PUBLISHER_ID = 'b1111111-1111-4111-8111-111111111111';
@@ -57,6 +59,7 @@ function renderDetail(path = `/books/${BOOK_ID}`) {
     <AppQueryProvider client={client}>
       <MemoryRouter initialEntries={[path]}>
         <Routes>
+          <Route path="/books" element={<p data-testid="books-list">Listado</p>} />
           <Route path="/books/:id" element={<BookDetailPage />} />
         </Routes>
       </MemoryRouter>
@@ -72,6 +75,7 @@ describe('BookDetailPage (T17)', () => {
   afterEach(() => {
     cleanup();
     vi.clearAllMocks();
+    vi.restoreAllMocks();
     vi.unstubAllEnvs();
   });
 
@@ -134,5 +138,53 @@ describe('BookDetailPage (T17)', () => {
         /no encontrado/i,
       );
     });
+  });
+
+  it('si se cancela la confirmación no llama a delete', async () => {
+    getBookMock.mockResolvedValue(createBookResponse());
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
+
+    renderDetail();
+    await screen.findByTestId('book-detail');
+
+    fireEvent.click(screen.getByTestId('book-detail-delete'));
+
+    expect(deleteBookMock).not.toHaveBeenCalled();
+  });
+
+  it('al confirmar elimina, invalida y navega al listado', async () => {
+    getBookMock.mockResolvedValue(createBookResponse());
+    deleteBookMock.mockResolvedValue(undefined);
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+    renderDetail();
+    await screen.findByTestId('book-detail');
+
+    fireEvent.click(screen.getByTestId('book-detail-delete'));
+
+    await waitFor(() => {
+      expect(deleteBookMock).toHaveBeenCalledWith(BOOK_ID);
+      expect(screen.getByTestId('books-list')).toBeTruthy();
+    });
+  });
+
+  it('muestra error si el delete falla y permanece en el detalle', async () => {
+    getBookMock.mockResolvedValue(createBookResponse());
+    deleteBookMock.mockRejectedValue(new Error('No se pudo borrar'));
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+    renderDetail();
+    await screen.findByTestId('book-detail');
+
+    fireEvent.click(screen.getByTestId('book-detail-delete'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('error-state').textContent).toContain(
+        'No se pudo borrar',
+      );
+    });
+
+    expect(screen.getByTestId('book-detail')).toBeTruthy();
+    expect(screen.queryByTestId('books-list')).toBeNull();
   });
 });

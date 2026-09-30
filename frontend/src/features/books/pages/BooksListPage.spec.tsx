@@ -19,8 +19,13 @@ vi.mock('../api/books.api', async (importOriginal) => {
   return {
     ...actual,
     listBooks: vi.fn(),
+    exportBooksCsv: vi.fn(),
   };
 });
+
+vi.mock('../utils/download-blob', () => ({
+  downloadBlob: vi.fn(),
+}));
 
 vi.mock('../api/lookups.api', () => ({
   listAuthors: vi.fn(),
@@ -28,14 +33,17 @@ vi.mock('../api/lookups.api', () => ({
   listGenres: vi.fn(),
 }));
 
-import { listBooks } from '../api/books.api';
+import { listBooks, exportBooksCsv } from '../api/books.api';
 import {
   listAuthors,
   listGenres,
   listPublishers,
 } from '../api/lookups.api';
+import { downloadBlob } from '../utils/download-blob';
 
 const listBooksMock = vi.mocked(listBooks);
+const exportBooksCsvMock = vi.mocked(exportBooksCsv);
+const downloadBlobMock = vi.mocked(downloadBlob);
 const listAuthorsMock = vi.mocked(listAuthors);
 const listPublishersMock = vi.mocked(listPublishers);
 const listGenresMock = vi.mocked(listGenres);
@@ -379,5 +387,93 @@ describe('BooksListPage filtros, orden y debounce (T15)', () => {
         defaultListParams({ sortBy: 'price', sortOrder: 'desc' }),
       );
     });
+  });
+});
+
+describe('BooksListPage exportar CSV', () => {
+  beforeEach(() => {
+    mockLookups();
+    listBooksMock.mockResolvedValue(
+      createListResponse({
+        data: [createBook({ title: 'Casa de los espíritus' })],
+        meta: { page: 1, limit: 20, total: 1, totalPages: 1 },
+      }),
+    );
+    exportBooksCsvMock.mockResolvedValue(
+      new Blob(['titulo\nCasa'], { type: 'text/csv;charset=utf-8' }),
+    );
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.clearAllMocks();
+  });
+
+  it('el botón está visible con listado vacío', async () => {
+    listBooksMock.mockResolvedValue(
+      createListResponse({
+        data: [],
+        meta: { page: 1, limit: 20, total: 0, totalPages: 0 },
+      }),
+    );
+
+    renderBooksListPage();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('empty-state')).toBeTruthy();
+    });
+
+    expect(screen.getByTestId('books-export-csv')).toBeTruthy();
+  });
+
+  it('exporta con los filtros actuales y descarga el Blob', async () => {
+    renderBooksListPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('Casa de los espíritus')).toBeTruthy();
+    });
+
+    fireEvent.change(screen.getByTestId('books-filter-available'), {
+      target: { value: 'true' },
+    });
+
+    await waitFor(() => {
+      expect(listBooksMock).toHaveBeenCalledWith(
+        defaultListParams({ available: true }),
+      );
+    });
+
+    fireEvent.click(screen.getByTestId('books-export-csv'));
+
+    await waitFor(() => {
+      expect(exportBooksCsvMock).toHaveBeenCalledWith(
+        defaultListParams({ available: true }),
+      );
+      expect(downloadBlobMock).toHaveBeenCalledTimes(1);
+    });
+
+    const [blob, filename] = downloadBlobMock.mock.calls[0] as [Blob, string];
+    expect(blob).toBeInstanceOf(Blob);
+    expect(filename).toBe('books.csv');
+  });
+
+  it('muestra error si falla la exportación', async () => {
+    exportBooksCsvMock.mockRejectedValue(new Error('Exportación fallida'));
+
+    renderBooksListPage();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('books-export-csv')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByTestId('books-export-csv'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('error-state').textContent).toContain(
+        'Exportación fallida',
+      );
+    });
+
+    expect(downloadBlobMock).not.toHaveBeenCalled();
   });
 });

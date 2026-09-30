@@ -76,6 +76,24 @@ function appendIfDefined(
   searchParams.set(key, String(value));
 }
 
+export type ExportBooksParams = Omit<ListBooksParams, 'page' | 'limit'>;
+
+export const BOOKS_CSV_FILENAME = 'books.csv';
+
+export function toExportBooksParams(
+  params: ListBooksParams,
+): ExportBooksParams {
+  return {
+    search: params.search,
+    genreId: params.genreId,
+    publisherId: params.publisherId,
+    authorId: params.authorId,
+    available: params.available,
+    sortBy: params.sortBy,
+    sortOrder: params.sortOrder,
+  };
+}
+
 export function buildBooksQueryString(params: ListBooksParams): string {
   const searchParams = new URLSearchParams();
 
@@ -125,6 +143,24 @@ export async function uploadBookImage(
   const formData = new FormData();
   formData.append('file', file);
   return http.post<BookResponse>(`/books/${id}/image`, formData);
+}
+
+export async function deleteBook(id: string): Promise<void> {
+  await http.delete<void>(`/books/${id}`);
+}
+
+/**
+ * Exporta CSV con los mismos filtros del listado. Omite `page`/`limit`
+ * (el backend no pagina el export). Usa el cliente HTTP para enviar el Bearer:
+ * un `<a href>` directo no adjuntaría el token.
+ */
+export async function exportBooksCsv(
+  params: ListBooksParams = {},
+): Promise<Blob> {
+  const csv = await http.get<string>(
+    `/books/export/csv${buildBooksQueryString(toExportBooksParams(params))}`,
+  );
+  return new Blob([csv], { type: 'text/csv;charset=utf-8' });
 }
 
 /**

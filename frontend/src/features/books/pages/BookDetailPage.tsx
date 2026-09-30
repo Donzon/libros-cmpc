@@ -1,4 +1,4 @@
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -12,6 +12,7 @@ import {
   LoadingState,
 } from '../../../shared/ui/query-states';
 import { resolveBookImageSrc } from '../api/books.api';
+import { useDeleteBookMutation } from '../hooks/useBookMutations';
 import { useBookQuery } from '../hooks/useBookQuery';
 
 function formatAvailability(available: boolean): string {
@@ -20,7 +21,9 @@ function formatAvailability(available: boolean): string {
 
 export function BookDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const bookQuery = useBookQuery(id);
+  const deleteMutation = useDeleteBookMutation();
 
   const showLoading = bookQuery.isLoading && !bookQuery.data;
   const isNotFound =
@@ -37,6 +40,32 @@ export function BookDetailPage() {
 
   const book = bookQuery.data;
   const imageSrc = book ? resolveBookImageSrc(book.imageUrl) : null;
+
+  const deleteErrorMessage =
+    deleteMutation.isError
+      ? deleteMutation.error instanceof Error
+        ? deleteMutation.error.message
+        : 'No se pudo eliminar el libro.'
+      : null;
+
+  const handleDelete = () => {
+    if (!book) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `¿Eliminar «${book.title}»? Dejará de aparecer en el inventario (borrado lógico).`,
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    deleteMutation.mutate(book.id, {
+      onSuccess: () => {
+        void navigate('/books');
+      },
+    });
+  };
 
   return (
     <main data-testid="book-detail-page" className="grid gap-6">
@@ -115,7 +144,12 @@ export function BookDetailPage() {
                   <dd data-testid="book-detail-genre">{book.genre.name}</dd>
                 </div>
               </dl>
-              <p className="mt-6">
+              {deleteErrorMessage ? (
+                <div className="mt-6">
+                  <ErrorState message={deleteErrorMessage} />
+                </div>
+              ) : null}
+              <p className="mt-6 flex flex-wrap gap-2">
                 <Button asChild>
                   <Link
                     to={`/books/${book.id}/edit`}
@@ -123,6 +157,15 @@ export function BookDetailPage() {
                   >
                     Editar
                   </Link>
+                </Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  data-testid="book-detail-delete"
+                  disabled={deleteMutation.isPending}
+                  onClick={handleDelete}
+                >
+                  {deleteMutation.isPending ? 'Eliminando…' : 'Eliminar'}
                 </Button>
               </p>
             </CardContent>

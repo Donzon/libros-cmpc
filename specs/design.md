@@ -167,6 +167,8 @@ Stack de datos y formularios:
 - Cliente HTTP con interceptor que adjunta `Authorization: Bearer <token>`.
 - 401 → limpia token y redirige a login (REQ-F1).
 - Listado: query params espejo del backend; debounce ~300 ms en `search` (solo título) (REQ-F2.4).
+- Export CSV (REQ-B4): botón en el listado. Llama `GET /books/export/csv` con los filtros actuales (sin `page`/`limit`) por el cliente HTTP (Bearer). La respuesta se convierte en `Blob` y se descarga con un `<a download>` temporal; un `href` directo no enviaría el token.
+- Eliminar (REQ-B5): botón en el detalle con confirmación. Mutación `DELETE /books/:id` que invalida listado y detalle y navega a `/books`.
 - Estados loading / empty / error (REQ-F5).
 - **`ErrorBoundary`** (class component, `getDerivedStateFromError` + `componentDidCatch`) envolviendo el router dentro de `App` (REQ-F6). Cubre el hueco que React Query no cubre: errores de red ya se manejan por query/mutation, pero un throw durante el render deja pantalla en blanco. El fallback muestra un mensaje y un botón que resetea el estado del boundary para reintentar el render.
 

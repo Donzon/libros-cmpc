@@ -16,10 +16,9 @@ Lo que no está implementado en la versión actual, con una propuesta de cómo s
 | 8 | CI/CD | P2 | P2 |
 | 9 | Caché | P2 | P2 |
 | 10 | Roles y permisos avanzados | fuera de alcance | Evolución |
-| 11 | Botones de exportar CSV y eliminar en la SPA | brecha conocida | P1 |
-| 12 | Fallback SPA en nginx (deep links) | brecha conocida | P1 |
-| 13 | Healthcheck del backend en Docker Compose | brecha conocida (design §8) | P1 |
-| 14 | Consulta del historial de auditoría | evolución | Evolución (lectura SQL/logs documentada) |
+| 11 | Fallback SPA en nginx (deep links) | brecha conocida | P1 |
+| 12 | Healthcheck del backend en Docker Compose | brecha conocida (design §8) | P1 |
+| 13 | Consulta del historial de auditoría | evolución | Evolución (lectura SQL/logs documentada) |
 
 ---
 
@@ -100,28 +99,19 @@ Lo que no está implementado en la versión actual, con una propuesta de cómo s
 
 Fuera de alcance según requirements §10. **Cómo se implementaría:** `role` enum en `User` (o tablas `Role`/`Permission`), claim en el JWT, decorador `@Roles()` + `RolesGuard` global, y endpoints de administración de usuarios.
 
-## 11. Botones de exportar CSV y eliminar en la SPA
-
-**Hoy:** `GET /api/books/export/csv` y `DELETE /api/books/:id` funcionan y están documentados en Swagger, pero la SPA no los expone.
-
-**Cómo se implementaría:**
-
-- Exportar: botón en `BooksListPage` que llame al endpoint con los filtros actuales mediante el cliente HTTP (para adjuntar el Bearer), convierta la respuesta en `Blob` y la descargue con un `<a download>` temporal. No sirve un link directo porque no enviaría el token.
-- Eliminar: botón en el detalle con confirmación; mutación de React Query que invalide listado y detalle y navegue a `/books`.
-
-## 12. Fallback SPA en nginx (deep links)
+## 11. Fallback SPA en nginx (deep links)
 
 **Hoy:** el contenedor `frontend` usa la configuración por defecto de nginx; navegar dentro de la app funciona, pero recargar o abrir directamente una ruta como `/books` responde 404.
 
 **Cómo se implementaría:** agregar `frontend/nginx.conf` con `location / { try_files $uri $uri/ /index.html; }` y copiarlo en el `Dockerfile` a `/etc/nginx/conf.d/default.conf`.
 
-## 13. Healthcheck del backend en Docker Compose
+## 12. Healthcheck del backend en Docker Compose
 
 **Hoy:** `GET /api/health` existe (y responde 503 si la DB cae), pero `docker-compose.yml` no define un `healthcheck` para el servicio `backend` como indica design §8.
 
 **Cómo se implementaría:** en el servicio `backend`, `healthcheck: { test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"], interval: 10s, retries: 5, start_period: 30s }` (`wget` viene en la imagen alpine), y `frontend.depends_on.backend.condition: service_healthy`.
 
-## 14. Consulta del historial de auditoría
+## 13. Consulta del historial de auditoría
 
 **Hoy:** `AuditLog` se escribe en cada mutación y export (REQ-B6), y el interceptor deja una línea por request en stdout (REQ-B9). No hay endpoint ni pantalla en la SPA para leer el historial.
 

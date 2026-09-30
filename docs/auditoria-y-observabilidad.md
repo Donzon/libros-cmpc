@@ -7,7 +7,7 @@ Hay **dos canales distintos**. No se mezclan:
 | Tabla `AuditLog` | REQ-B6 | PostgreSQL | Quién hizo qué sobre un libro y cuándo (crear, editar, imagen, borrar, exportar CSV) |
 | `LoggingInterceptor` | REQ-B9 | stdout del contenedor `backend` | Cada request HTTP: método, ruta, status, latencia y `userId` si hay JWT |
 
-No hay pantalla de auditoría en la SPA ni un `GET /api/audit-logs` (ver [`pending.md`](./pending.md) §14). La forma de **ver** los registros es Prisma Studio, SQL o los logs del contenedor.
+No hay pantalla de auditoría en la SPA ni un `GET /api/audit-logs` (ver [`pending.md`](./pending.md) §13). La forma de **ver** los registros es Prisma Studio, SQL o los logs del contenedor.
 
 Prerrequisito: el stack levantado (`docker compose up`) y al menos un login con `admin@cmpc.local` / `Admin123!`.
 

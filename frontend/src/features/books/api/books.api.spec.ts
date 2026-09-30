@@ -3,9 +3,12 @@ import * as httpModule from '../../../shared/api/http';
 import * as httpClient from '../../../shared/api/http-client';
 import {
   createBook,
+  deleteBook,
+  exportBooksCsv,
   getBook,
   listBooks,
   resolveBookImageSrc,
+  toExportBooksParams,
   updateBook,
   uploadBookImage,
 } from './books.api';
@@ -138,6 +141,72 @@ describe('books mutations (T16)', () => {
     expect(path).toBe(`/books/${id}/image`);
     expect(body).toBeInstanceOf(FormData);
     expect(body.get('file')).toBe(file);
+  });
+
+  it('deleteBook DELETE /books/:id', async () => {
+    const id = 'd1111111-1111-4111-8111-111111111111';
+    const del = vi.spyOn(httpModule.http, 'delete').mockResolvedValue(undefined);
+
+    await deleteBook(id);
+
+    expect(del).toHaveBeenCalledWith(`/books/${id}`);
+  });
+});
+
+describe('exportBooksCsv', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('omito page/limit y serializa filtros; devuelve Blob CSV', async () => {
+    const get = vi
+      .spyOn(httpModule.http, 'get')
+      .mockResolvedValue('titulo,autor\nEl Quijote,Cervantes');
+
+    const blob = await exportBooksCsv({
+      page: 2,
+      limit: 20,
+      search: 'casa',
+      genreId: 'g1111111-1111-1111-1111-111111111111',
+      available: true,
+      sortBy: 'price',
+      sortOrder: 'desc',
+    });
+
+    const calledUrl = get.mock.calls[0]?.[0] as string;
+    expect(calledUrl.startsWith('/books/export/csv?')).toBe(true);
+
+    const qs = new URLSearchParams(calledUrl.slice('/books/export/csv?'.length));
+    expect(qs.get('page')).toBeNull();
+    expect(qs.get('limit')).toBeNull();
+    expect(qs.get('search')).toBe('casa');
+    expect(qs.get('genreId')).toBe('g1111111-1111-1111-1111-111111111111');
+    expect(qs.get('available')).toBe('true');
+    expect(qs.get('sortBy')).toBe('price');
+    expect(qs.get('sortOrder')).toBe('desc');
+
+    expect(blob).toBeInstanceOf(Blob);
+    expect(blob.type).toContain('text/csv');
+  });
+
+  it('toExportBooksParams descarta paginación', () => {
+    expect(
+      toExportBooksParams({
+        page: 3,
+        limit: 10,
+        search: 'q',
+        sortBy: 'title',
+        sortOrder: 'asc',
+      }),
+    ).toEqual({
+      search: 'q',
+      genreId: undefined,
+      publisherId: undefined,
+      authorId: undefined,
+      available: undefined,
+      sortBy: 'title',
+      sortOrder: 'asc',
+    });
   });
 });
 
