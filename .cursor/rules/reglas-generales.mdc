@@ -1,0 +1,14 @@
+---
+description: Reglas generales del proyecto
+alwaysApply: true
+---
+
+# Reglas generales del proyecto
+
+- Este proyecto sigue spec driven development. Fuente de verdad: `specs/requirements.md`, `design.md` y `tasks.md`.
+- Implementa solo la tarea que se pida. No hagas cambios fuera de su alcance.
+- Si algo contradice la spec, avisa y propón actualizar la spec; no lo resuelvas en silencio.
+- TypeScript estricto, sin `any`.
+- Cada tarea incluye sus tests.
+- No agregues dependencias sin justificarlas.
+- Nunca hardcodees secretos; usa variables de entorno.

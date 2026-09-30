@@ -1,0 +1,54 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-cmpc}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cmpc}
+      POSTGRES_DB: ${POSTGRES_DB:-cmpc_libros}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-cmpc} -d ${POSTGRES_DB:-cmpc_libros}",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://cmpc:cmpc@db:5432/cmpc_libros}
+      JWT_SECRET: ${JWT_SECRET:-change-me-use-a-random-string-at-least-32-chars}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-30m}
+      PORT: 3000
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173}
+      UPLOAD_DIR: ${UPLOAD_DIR:-/app/uploads}
+      MAX_IMAGE_BYTES: ${MAX_IMAGE_BYTES:-2097152}
+    volumes:
+      - uploads_data:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+  uploads_data:

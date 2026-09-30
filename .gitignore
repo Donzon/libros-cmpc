@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+
+# Build
+dist/
+build/
+coverage/
+
+# Env / secrets
+.env
+.env.local
+.env.*.local
+
+# Uploads (volumen local)
+uploads/
+backend/uploads/
+
+# Logs / OS
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Prisma
+backend/prisma/*.db
+backend/prisma/*.db-journal
+
+# Test / cache
+.turbo/
+*.tsbuildinfo
+.vite/

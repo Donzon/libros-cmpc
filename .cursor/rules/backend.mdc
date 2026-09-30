@@ -1,0 +1,10 @@
+---
+description: Convenciones del backend NestJS
+globs: backend/**
+---
+- Arquitectura modular por dominio; controllers delgados, lógica en services.
+- DTOs con class-validator; ValidationPipe global.
+- Acceso a datos solo con Prisma; operaciones críticas y auditoría en $transaction.
+- Consultas de libros siempre con deletedAt: null.
+- Errores con excepciones de Nest; formato uniforme por el filtro global.
+- Tests con Jest, mockeando Prisma.

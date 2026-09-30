@@ -1,0 +1,9 @@
+ ---
+description: Convenciones del frontend React
+globs: frontend/**
+---
+- Estructura por features/ (auth, books) y shared/.
+- Datos del servidor con React Query; formularios con react-hook-form + zod.
+- Componentes funcionales con hooks; sin lógica de negocio en JSX.
+- Siempre manejar estados loading, vacío y error.
+- Tests con Vitest + Testing Library.
