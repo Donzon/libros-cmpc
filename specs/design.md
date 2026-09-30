@@ -10,7 +10,7 @@ Monorepo con tres servicios orquestados por Docker Compose:
 
 | Servicio | Tecnología | Rol |
 |----------|------------|-----|
-| `frontend` | React + TypeScript (Vite) | SPA: login, listado, formularios, detalle |
+| `frontend` | React + TypeScript (Vite), build estático servido por nginx | SPA: login, listado, formularios, detalle |
 | `backend` | NestJS + TypeScript + Prisma | API REST, auth JWT, auditoría, CSV, imágenes |
 | `db` | PostgreSQL 16 | Persistencia relacional |
 
@@ -76,6 +76,8 @@ flowchart TB
 ├── docker-compose.yml
 ├── .env.example
 ├── frontend/
+│   ├── Dockerfile
+│   ├── nginx.conf           # fallback SPA (ver §8)
 │   ├── src/
 │   │   ├── features/auth/
 │   │   ├── features/books/
@@ -573,6 +575,17 @@ Variables mínimas (`.env.example`):
 
 `docker-compose.yml`: servicios `db`, `backend`, `frontend`; al iniciar backend: `prisma migrate deploy` + `prisma db seed` (REQ-O1, O2). Healthcheck del servicio `backend` apunta a `GET /health`.
 
+### 8.1 Servido estático del frontend (REQ-O4)
+
+El frontend se construye con Vite y el `dist/` resultante se sirve con nginx (`frontend/nginx.conf`, copiado a `/etc/nginx/conf.d/default.conf` en la imagen). Como el enrutado es del cliente (`BrowserRouter`), la configuración por defecto de nginx no sirve: intentaría resolver `/login` como un archivo en disco y devolvería 404 al entrar directo o recargar.
+
+Reglas mínimas:
+
+- `location /` con `try_files $uri $uri/ /index.html`: cualquier ruta sin archivo correspondiente entrega el `index.html` y el router decide qué renderizar.
+- `location /assets/` con `try_files $uri =404` y cache larga (`immutable`): los bundles llevan hash, así que un asset inexistente debe fallar como 404 en vez de recibir el HTML con `Content-Type` de JavaScript, error difícil de diagnosticar.
+
+Si en el futuro se usa `HashRouter` o un host con fallback propio (S3 + CloudFront, Netlify, etc.), esta config se reemplaza por el mecanismo equivalente de la plataforma, pero el criterio de REQ-O4 sigue aplicando.
+
 ---
 
 ## 9. Testing (alineación)
@@ -603,6 +616,7 @@ Priorizar tests del builder de filtros, soft delete, hash/login y validación de
 | REQ-DB1–DB5 | §3, §4, seed en §3.3 |
 | REQ-T1–T3 | §9 |
 | REQ-O1–O3 | §8 |
+| REQ-O4 | §8.1, §1.3 frontend |
 | REQ-DOC2–DOC4 | Swagger §2.1; diagramas §1 y §3.1 |
 | A1–A6 | §1.4 |
 

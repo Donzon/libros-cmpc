@@ -43,19 +43,21 @@ Plan de implementación a partir de [`requirements.md`](./requirements.md) y [`d
 ## T1 — Scaffold monorepo y Docker Compose
 
 - **Prioridad:** P0
-- **REQ:** REQ-O1, REQ-O3
+- **REQ:** REQ-O1, REQ-O3, REQ-O4
 - **Archivos principales:**
   - `docker-compose.yml`
   - `.env.example`
   - `.gitignore`
   - `backend/package.json`, `backend/Dockerfile`, `backend/tsconfig.json` (esqueleto Nest)
   - `frontend/package.json`, `frontend/Dockerfile`, `frontend/vite.config.ts` (esqueleto Vite/React/TS)
-- **Incluye tests:** smoke: script o CI local que verifique que `docker compose config` es válido; smoke unitario mínimo del entrypoint backend (`main` / health placeholder si existe) o test de que el paquete backend arranca el módulo raíz vacío.
+  - `frontend/nginx.conf` (fallback SPA, `design.md` §8.1; copiado a `/etc/nginx/conf.d/default.conf` y no excluido por `.dockerignore`)
+- **Incluye tests:** smoke: script o CI local que verifique que `docker compose config` es válido; smoke unitario mínimo del entrypoint backend (`main` / health placeholder si existe) o test de que el paquete backend arranca el módulo raíz vacío; smoke de fallback SPA: `GET /ruta-inexistente` en el frontend responde 200 con el `index.html` y `GET /assets/no-existe.js` responde 404.
 - **Criterio de terminado:**
   1. `docker compose config` sale sin error.
   2. Existen carpetas `backend/` y `frontend/` con `package.json` y Dockerfiles.
   3. `.env.example` documenta al menos las variables de `design.md` §8 (aunque aún no se validen todas en runtime).
   4. `docker compose up` levanta los tres servicios (frontend/backend pueden fallar health hasta T2–T4; DB debe quedar healthy).
+  5. El frontend en Docker sirve rutas profundas sin 404 (REQ-O4): la imagen incluye su propia config de nginx, no la default.
 
 ---
 
@@ -303,7 +305,7 @@ Plan de implementación a partir de [`requirements.md`](./requirements.md) y [`d
 ## T13 — Login UI y rutas protegidas
 
 - **Prioridad:** P0
-- **REQ:** REQ-F1, REQ-T1 (parcial)
+- **REQ:** REQ-F1, REQ-O4, REQ-T1 (parcial)
 - **Depende de:** T12, T5
 - **Archivos principales:**
   - `frontend/src/features/auth/**` (página login, hook `useAuth`, store/token)
@@ -316,7 +318,8 @@ Plan de implementación a partir de [`requirements.md`](./requirements.md) y [`d
   1. Formulario email/password funcional contra backend.
   2. Token persistido (memory + `localStorage` o equivalente).
   3. Sesión expirada (401) vuelve a login.
-  4. Tests en verde.
+  4. Entrar directo a `/login` (y recargar la página) en el frontend dockerizado responde 200 y renderiza el login, no 404 de nginx (REQ-O4).
+  5. Tests en verde.
 
 ---
 

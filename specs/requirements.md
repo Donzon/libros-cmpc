@@ -78,6 +78,7 @@ Un **libro** tiene: título, autor, editorial, precio, disponibilidad y género 
 | REQ-O1 | docker-compose | Un `docker-compose.yml` levanta frontend, backend y PostgreSQL con un solo comando. |
 | REQ-O2 | Migraciones y seed automáticos | Se ejecutan al iniciar el entorno. |
 | REQ-O3 | Configuración por entorno | `.env.example` documentado. |
+| REQ-O4 | SPA servida con fallback de rutas | El servidor estático del frontend devuelve `index.html` en cualquier ruta que no corresponda a un archivo existente. Entrar directo o recargar una URL profunda (`/login`, `/books/:id`) responde 200 y la resuelve el router del cliente, no 404. Los assets con hash (`/assets/*`) sí devuelven 404 cuando no existen. |
 
 ## 7. Documentación
 
@@ -100,7 +101,7 @@ Un **libro** tiene: título, autor, editorial, precio, disponibilidad y género 
 
 ## 9. Prioridades
 
-- **P0 (núcleo):** REQ-B2, B3, DB1, DB2, F1, F2, F3, T3, O1, DOC1.
+- **P0 (núcleo):** REQ-B2, B3, DB1, DB2, F1, F2, F3, T3, O1, O4, DOC1.
 - **P1:** REQ-B4, B5, B6, DB4, F2.4, F3.2, DOC2 a DOC4.
 - **P2 (si sobra tiempo o solo documentar):** refresh token, dashboard, CI/CD, caché.
 
