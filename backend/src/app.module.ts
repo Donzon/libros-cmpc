@@ -1,8 +1,9 @@
 import { Module } from '@nestjs/common';
+import { AppConfigModule } from './modules/config/config.module';
+import { PrismaModule } from './modules/prisma/prisma.module';
+import { HealthModule } from './modules/health/health.module';
 
-/**
- * Módulo raíz vacío (scaffold T1).
- * Config, health, Prisma y módulos de dominio se agregan en T2+.
- */
-@Module({})
+@Module({
+  imports: [AppConfigModule, PrismaModule, HealthModule],
+})
 export class AppModule {}
