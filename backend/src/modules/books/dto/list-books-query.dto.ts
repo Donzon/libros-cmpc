@@ -1,3 +1,4 @@
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import {
   IsBoolean,
@@ -39,12 +40,14 @@ function toPositiveInt(defaultValue: number) {
 }
 
 export class ListBooksQueryDto {
+  @ApiPropertyOptional({ minimum: 1, default: 1, description: 'Página (se ignora en export CSV)' })
   @IsOptional()
   @Transform(toPositiveInt(1))
   @IsInt()
   @Min(1)
   page: number = 1;
 
+  @ApiPropertyOptional({ minimum: 1, maximum: 100, default: 20, description: 'Tamaño de página (se ignora en export CSV)' })
   @IsOptional()
   @Transform(toPositiveInt(20))
   @IsInt()
@@ -52,31 +55,38 @@ export class ListBooksQueryDto {
   @Max(100)
   limit: number = 20;
 
+  @ApiPropertyOptional({ description: 'Búsqueda case-insensitive solo por título' })
   @IsOptional()
   @IsString()
   search?: string;
 
+  @ApiPropertyOptional({ format: 'uuid' })
   @IsOptional()
   @IsUUID()
   genreId?: string;
 
+  @ApiPropertyOptional({ format: 'uuid' })
   @IsOptional()
   @IsUUID()
   publisherId?: string;
 
+  @ApiPropertyOptional({ format: 'uuid' })
   @IsOptional()
   @IsUUID()
   authorId?: string;
 
+  @ApiPropertyOptional({ type: Boolean })
   @IsOptional()
   @Transform(toOptionalBoolean)
   @IsBoolean()
   available?: boolean;
 
+  @ApiPropertyOptional({ enum: BOOK_SORT_BY, default: 'title' })
   @IsOptional()
   @IsIn(BOOK_SORT_BY)
   sortBy: BookSortBy = 'title';
 
+  @ApiPropertyOptional({ enum: BOOK_SORT_ORDER, default: 'asc' })
   @IsOptional()
   @IsIn(BOOK_SORT_ORDER)
   sortOrder: BookSortOrder = 'asc';

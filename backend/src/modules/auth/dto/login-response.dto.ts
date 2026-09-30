@@ -1,0 +1,9 @@
+import { ApiProperty } from '@nestjs/swagger';
+
+export class LoginResponseDto {
+  @ApiProperty({ example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' })
+  accessToken!: string;
+
+  @ApiProperty({ example: '30m' })
+  expiresIn!: string;
+}

@@ -6,6 +6,7 @@ import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { configureStaticUploads } from './common/static-uploads';
+import { configureSwagger } from './common/swagger';
 import { EnvConfig } from './modules/config/env.schema';
 
 async function bootstrap(): Promise<void> {
@@ -30,6 +31,7 @@ async function bootstrap(): Promise<void> {
     app,
     config.get('UPLOAD_DIR', { infer: true }),
   );
+  configureSwagger(app);
 
   const port = config.get('PORT', { infer: true });
   await app.listen(port);
