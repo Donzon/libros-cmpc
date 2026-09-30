@@ -6,13 +6,13 @@ import { BookCreatePage } from '../features/books/pages/BookCreatePage';
 import { BookDetailPage } from '../features/books/pages/BookDetailPage';
 import { BookEditPage } from '../features/books/pages/BookEditPage';
 import { BooksListPage } from '../features/books/pages/BooksListPage';
-import { HomePage } from './pages/placeholders';
 
 export function AppRoutes() {
   return (
     <AuthProvider>
       <Routes>
-        <Route path="/" element={<HomePage />} />
+        {/* El listado es la home real; ProtectedRoute deriva al login si no hay sesión. */}
+        <Route path="/" element={<Navigate to="/books" replace />} />
         <Route path="/login" element={<LoginPage />} />
         <Route
           path="/books"

@@ -290,7 +290,7 @@ Plan de implementación a partir de [`requirements.md`](./requirements.md) y [`d
   - `frontend/src/main.tsx`, `frontend/src/app/**`
   - `frontend/src/shared/api/http-client.ts` (Bearer + manejo 401)
   - `frontend/src/shared/providers/query-client.tsx`
-  - Router básico (rutas placeholder)
+  - Router básico (rutas placeholder; la home de T12 se retiró después — ver «Desviaciones»)
 - **Incluye tests:**
   - Unit: interceptor adjunta token si existe.
   - Unit: respuesta 401 limpia token / dispara redirect handler.
@@ -310,17 +310,19 @@ Plan de implementación a partir de [`requirements.md`](./requirements.md) y [`d
 - **Depende de:** T12, T5
 - **Archivos principales:**
   - `frontend/src/features/auth/**` (página login, hook `useAuth`, store/token)
-  - Rutas protegidas en `frontend/src/app/router.tsx`
+  - Rutas protegidas y redirección de `/` en `frontend/src/app/router.tsx`
 - **Incluye tests:**
   - Testing Library: submit con credenciales llama API y guarda token.
   - Ruta protegida sin token redirige a login.
+  - `/` y las rutas desconocidas sin sesión terminan en el login.
   - Mensaje de error en login fallido.
 - **Criterio de terminado:**
   1. Formulario email/password funcional contra backend.
   2. Token persistido (memory + `localStorage` o equivalente).
   3. Sesión expirada (401) vuelve a login.
-  4. Entrar directo a `/login` (y recargar la página) en el frontend dockerizado responde 200 y renderiza el login, no 404 de nginx (REQ-O4).
-  5. Tests en verde.
+  4. `/` redirige al listado; sin sesión `ProtectedRoute` deriva al login y, tras autenticarse, se vuelve al destino original (añadido post-cierre; ver «Desviaciones»).
+  5. Entrar directo a `/login` (y recargar la página) en el frontend dockerizado responde 200 y renderiza el login, no 404 de nginx (REQ-O4).
+  6. Tests en verde.
 
 ---
 
@@ -477,3 +479,9 @@ Plan de implementación a partir de [`requirements.md`](./requirements.md) y [`d
 - Soft delete (REQ-B5) vive en **T7** aunque el tag de prioridad del requisito sea P1: es inseparable del CRUD P0.
 - Auditoría de imagen: si T10 se hace antes que T9, reabrir T10 al cablear upload o incluir audit de image en T9 con dependencia explícita de `AuditService`.
 - Export CSV debe declarar la ruta **antes** de `:id` (ver diseño).
+
+---
+
+## Desviaciones posteriores al cierre de una tarea
+
+- **Home placeholder de T12 eliminada (post-T13).** `frontend/src/app/pages/placeholders.tsx` era un scaffold temporal del router de T12. Ninguna REQ define página inicial y, por el supuesto A3 (usuarios pre-cargados, sin registro público), una landing anónima no tiene contenido que mostrar. La ruta `/` ahora es `<Navigate to="/books" replace />`: el listado es la home real y `ProtectedRoute` queda como único punto que deriva al login (REQ-F1). T13 se actualizó en consecuencia (archivos, tests y criterio de terminado). Los tests de `App.spec.tsx` que afirmaban el heading del placeholder ahora verifican que `/` y las rutas desconocidas terminan en el login cuando no hay sesión.
