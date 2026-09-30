@@ -395,6 +395,100 @@ describe('BooksService', () => {
     });
   });
 
+  describe('exportCsv', () => {
+    it('exporta CSV con filtros, sin paginación, excluye soft-deleted vía where y audita EXPORT', async () => {
+      findMany.mockResolvedValue([buildBook()]);
+
+      const csv = await service.exportCsv(
+        {
+          page: 2,
+          limit: 5,
+          search: 'casa',
+          genreId: genre.id,
+          publisherId: publisher.id,
+          authorId: author.id,
+          available: true,
+          sortBy: 'price',
+          sortOrder: 'desc',
+        },
+        userId,
+      );
+
+      expect(findMany).toHaveBeenCalledWith({
+        where: {
+          deletedAt: null,
+          genreId: genre.id,
+          publisherId: publisher.id,
+          authorId: author.id,
+          available: true,
+          title: { contains: 'casa', mode: 'insensitive' },
+        },
+        include: {
+          author: { select: { id: true, name: true } },
+          publisher: { select: { id: true, name: true } },
+          genre: { select: { id: true, name: true } },
+        },
+        orderBy: { price: 'desc' },
+        take: 10_000,
+      });
+      expect(findMany.mock.calls[0][0]).not.toHaveProperty('skip');
+      expect(transaction).toHaveBeenCalledTimes(1);
+      expect(auditLogCreate).toHaveBeenCalledWith({
+        data: {
+          userId,
+          action: AuditAction.EXPORT,
+          entity: 'Book',
+          entityId: null,
+          metadata: {
+            search: 'casa',
+            genreId: genre.id,
+            publisherId: publisher.id,
+            authorId: author.id,
+            available: true,
+            sortBy: 'price',
+            sortOrder: 'desc',
+          },
+        },
+      });
+      expect(csv).toContain('titulo,autor,editorial,genero,precio,disponibilidad');
+      expect(csv).toContain('La casa de los espíritus,Allende,Planeta,Ficción,19.99,true');
+    });
+
+    it('audita EXPORT con sort defaults cuando no hay filtros', async () => {
+      findMany.mockResolvedValue([]);
+
+      const csv = await service.exportCsv(
+        {
+          page: 1,
+          limit: 20,
+          sortBy: 'title',
+          sortOrder: 'asc',
+        },
+        userId,
+      );
+
+      expect(findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { deletedAt: null },
+          take: 10_000,
+        }),
+      );
+      expect(auditLogCreate).toHaveBeenCalledWith({
+        data: {
+          userId,
+          action: AuditAction.EXPORT,
+          entity: 'Book',
+          entityId: null,
+          metadata: {
+            sortBy: 'title',
+            sortOrder: 'asc',
+          },
+        },
+      });
+      expect(csv).toBe('titulo,autor,editorial,genero,precio,disponibilidad');
+    });
+  });
+
   describe('uploadImage', () => {
     const file: ValidatedImageFile = {
       buffer: Buffer.from([0xff, 0xd8, 0xff, 0xe0]),

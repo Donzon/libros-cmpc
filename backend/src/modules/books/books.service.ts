@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { AuditAction, Prisma } from '@prisma/client';
 import { AuditService } from '../audit/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { toBooksCsv } from './books-csv';
 import {
   buildBooksOrderBy,
   buildBooksWhere,
@@ -34,6 +35,35 @@ const bookInclude = {
 } satisfies Prisma.BookInclude;
 
 const BOOK_ENTITY = 'Book';
+
+/** Safety cap for CSV export (design §6.5); listing pagination is not applied. */
+const CSV_EXPORT_MAX_ROWS = 10_000;
+
+function buildExportAuditMetadata(
+  query: ListBooksQueryDto,
+): Prisma.InputJsonValue {
+  const metadata: Record<string, string | boolean> = {};
+
+  if (query.search !== undefined && query.search.trim() !== '') {
+    metadata.search = query.search.trim();
+  }
+  if (query.genreId !== undefined) {
+    metadata.genreId = query.genreId;
+  }
+  if (query.publisherId !== undefined) {
+    metadata.publisherId = query.publisherId;
+  }
+  if (query.authorId !== undefined) {
+    metadata.authorId = query.authorId;
+  }
+  if (query.available !== undefined) {
+    metadata.available = query.available;
+  }
+  metadata.sortBy = query.sortBy ?? 'title';
+  metadata.sortOrder = query.sortOrder ?? 'asc';
+
+  return metadata;
+}
 
 @Injectable()
 export class BooksService {
@@ -98,6 +128,32 @@ export class BooksService {
   async findOne(id: string): Promise<BookResponse> {
     const book = await this.findActiveOrThrow(id);
     return toBookResponse(book);
+  }
+
+  async exportCsv(query: ListBooksQueryDto, userId: string): Promise<string> {
+    const where = buildBooksWhere(query);
+    const orderBy = buildBooksOrderBy(query);
+
+    const books = await this.prisma.book.findMany({
+      where,
+      include: bookInclude,
+      orderBy,
+      take: CSV_EXPORT_MAX_ROWS,
+    });
+
+    const csv = toBooksCsv(books as BookWithRelations[]);
+
+    await this.prisma.$transaction(async (tx) => {
+      await this.auditService.log(tx, {
+        userId,
+        action: AuditAction.EXPORT,
+        entity: BOOK_ENTITY,
+        entityId: null,
+        metadata: buildExportAuditMetadata(query),
+      });
+    });
+
+    return csv;
   }
 
   async update(

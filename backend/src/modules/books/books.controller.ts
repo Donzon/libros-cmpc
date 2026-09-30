@@ -2,6 +2,7 @@ import {
   Controller,
   Delete,
   Get,
+  Header,
   HttpCode,
   HttpStatus,
   Param,
@@ -43,6 +44,16 @@ export class BooksController {
   @Get()
   findAll(@Query() query: ListBooksQueryDto): Promise<BooksListResponse> {
     return this.booksService.findAll(query);
+  }
+
+  @Get('export/csv')
+  @Header('Content-Type', 'text/csv; charset=utf-8')
+  @Header('Content-Disposition', 'attachment; filename="books.csv"')
+  exportCsv(
+    @Query() query: ListBooksQueryDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<string> {
+    return this.booksService.exportCsv(query, user.userId);
   }
 
   @Get(':id')
