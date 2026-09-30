@@ -8,14 +8,27 @@ La especificación completa vive en [`specs/`](./specs): [`requirements.md`](./s
 
 ---
 
+## Documentación (por audiencia)
+
+| Documento | Para quién |
+|-----------|------------|
+| **Este README** | Levantar el proyecto, configurar, usar la app, ver decisiones y supuestos |
+| [`docs/guia-de-validacion.md`](./docs/guia-de-validacion.md) | **Revisor:** recorrer el producto y marcar cada REQ (login, listado, CRUD, CSV, tests, docs) |
+| [`docs/auditoria-y-observabilidad.md`](./docs/auditoria-y-observabilidad.md) | **Revisor:** cómo **ver** la auditoría (`AuditLog`) y los logs HTTP del interceptor — no hay pantalla en la SPA |
+| [`docs/arquitectura.md`](./docs/arquitectura.md) | Capas, flujo crear+imagen, modelo relacional e índices |
+| [`docs/coverage.md`](./docs/coverage.md) | Cómo generar los reportes de cobertura ≥ 80 % |
+| [`docs/pending.md`](./docs/pending.md) | Lo no implementado y cómo se haría |
+
+---
+
 ## Índice
 
 1. [Inicio rápido](#1-inicio-rápido)
 2. [Configuración](#2-configuración)
 3. [Guía de uso](#3-guía-de-uso)
-4. [API y Swagger](#4-api-y-swagger)
-5. [Arquitectura](#5-arquitectura)
-6. [Modelo relacional](#6-modelo-relacional)
+4. [Cómo ver la auditoría y los logs](#4-cómo-ver-la-auditoría-y-los-logs)
+5. [API y Swagger](#5-api-y-swagger)
+6. [Arquitectura](#6-arquitectura)
 7. [Decisiones de diseño](#7-decisiones-de-diseño)
 8. [Supuestos (A1–A6)](#8-supuestos-a1a6)
 9. [Tests y cobertura](#9-tests-y-cobertura)
@@ -61,6 +74,8 @@ curl http://localhost:3000/api/health          # {"status":"ok"}
 
 Para detener: `docker compose down` (agrega `-v` para borrar también los volúmenes de base de datos e imágenes).
 
+Para **validar requisitos** (no solo que arranca): sigue [`docs/guia-de-validacion.md`](./docs/guia-de-validacion.md).
+
 ---
 
 ## 2. Configuración
@@ -89,6 +104,8 @@ Las variables del backend se validan al arrancar con Zod (`backend/src/modules/c
 
 ## 3. Guía de uso
 
+Checklist paso a paso alineado a cada REQ: [`docs/guia-de-validacion.md`](./docs/guia-de-validacion.md).
+
 1. Abre http://localhost:5173 e inicia sesión con las credenciales del seed. Cualquier ruta protegida sin sesión redirige al login; si el token expira (401), la sesión se limpia y vuelves al login.
 2. **Listado (`/books`)**: tabla paginada del lado del servidor con el total de resultados.
    - Filtros combinables por género, editorial, autor y disponibilidad.
@@ -97,15 +114,38 @@ Las variables del backend se validan al arrancar con Zod (`backend/src/modules/c
 3. **Nuevo libro (`/books/new`)** y **edición (`/books/:id/edit`)**: un único formulario con validación en vivo por campo; el envío se bloquea mientras haya errores. La imagen es opcional (JPEG, PNG o WebP, máx. 2 MiB) y muestra vista previa.
    - Si el libro se guarda pero falla la subida de la imagen, la UI ofrece **reintentar solo la subida**, sin crear el libro otra vez.
 4. **Detalle (`/books/:id`)**: todos los datos del libro, incluida la imagen.
-5. **Exportar CSV y eliminar** están disponibles por API (Swagger o `curl`, ver [§4](#4-api-y-swagger)); la SPA aún no tiene botones para ellas (ver `docs/pending.md`).
+5. **Exportar CSV y eliminar** están disponibles por API (Swagger o `curl`, ver [§5](#5-api-y-swagger)); la SPA aún no tiene botones para ellas (ver `docs/pending.md`).
    - `GET /api/books/export/csv` acepta los mismos filtros que el listado.
    - `DELETE /api/books/:id` es un soft delete: el libro deja de aparecer en listados, detalle y CSV, pero sigue en la base de datos con `deletedAt`.
 
-Cada creación, edición, eliminación, cambio de imagen y exportación queda registrada en la tabla `AuditLog` (quién, qué acción, sobre qué entidad y cuándo).
+---
+
+## 4. Cómo ver la auditoría y los logs
+
+El sistema **sí** registra las operaciones (REQ-B6) y cada request HTTP (REQ-B9). **No** hay menú de auditoría en la SPA ni un `GET` de historial: se inspecciona la base y el stdout del backend.
+
+| Qué quieres comprobar | Dónde |
+|----------------------|--------|
+| Quién creó/editó/borró un libro o exportó CSV, y cuándo | Tabla `AuditLog` (Prisma Studio o SQL) |
+| Método, ruta, status, latencia y usuario de cada request | `docker compose logs -f backend` |
+
+Comando rápido tras usar la app o Swagger:
+
+```bash
+docker compose exec db psql -U cmpc -d cmpc_libros -c "
+SELECT a.\"createdAt\", u.email, a.action, a.entity, a.\"entityId\", a.metadata
+FROM \"AuditLog\" a
+JOIN \"User\" u ON u.id = a.\"userId\"
+ORDER BY a.\"createdAt\" DESC
+LIMIT 20;
+"
+```
+
+Recorrido que genera `CREATE` / `UPDATE` / `EXPORT` / `DELETE`, Prisma Studio y el formato de las líneas del interceptor: [`docs/auditoria-y-observabilidad.md`](./docs/auditoria-y-observabilidad.md).
 
 ---
 
-## 4. API y Swagger
+## 5. API y Swagger
 
 La documentación interactiva OpenAPI está en **http://localhost:3000/api/docs** (JSON en `/api/docs-json`). Para probar rutas protegidas: ejecuta `POST /api/auth/login`, copia el `accessToken` y pégalo en el botón **Authorize**.
 
@@ -150,11 +190,11 @@ curl -H "Authorization: Bearer $TOKEN" "http://localhost:3000/api/books?sortBy=p
 curl -H "Authorization: Bearer $TOKEN" -o books.csv "http://localhost:3000/api/books/export/csv?available=true"
 ```
 
+Tras el export, la fila de auditoría `EXPORT` se consulta como en [§4](#4-cómo-ver-la-auditoría-y-los-logs).
+
 ---
 
-## 5. Arquitectura
-
-### 5.1 Vista del sistema
+## 6. Arquitectura
 
 ```mermaid
 flowchart LR
@@ -177,161 +217,25 @@ flowchart LR
 
 La SPA corre en el navegador y llama directamente al API (`VITE_API_BASE_URL`); nginx solo sirve los archivos estáticos del build. El backend es el único que accede a la base de datos y al volumen de imágenes.
 
-### 5.2 Capas del backend
-
-```mermaid
-flowchart TB
-  subgraph http [Capa HTTP]
-    Guards["JwtAuthGuard global<br/>+ Throttler en login"]
-    Pipes["ValidationPipe global<br/>ImageFileValidationPipe"]
-    Controllers["Controllers delgados<br/>+ decoradores Swagger"]
-    Filter["HttpExceptionFilter global"]
-  end
-  subgraph app [Capa de aplicación]
-    Services["Services por dominio<br/>Books, Auth, Users, Lookups"]
-    Builder["books-query.builder<br/>where / orderBy"]
-    Audit["AuditService.log(tx, ...)"]
-  end
-  subgraph infra [Infraestructura]
-    Prisma["PrismaService"]
-    Config["ConfigModule (Zod)"]
-    Storage["FileStorageService"]
-  end
-
-  Guards --> Controllers
-  Pipes --> Controllers
-  Controllers --> Services
-  Filter -.-> Controllers
-  Services --> Builder
-  Services --> Audit
-  Services --> Prisma
-  Services --> Storage
-  Audit --> Prisma
-  Config --> Services
-```
-
-- **Módulos por dominio** (`backend/src/modules/`): `config`, `prisma`, `health`, `auth`, `users`, `authors`, `publishers`, `genres`, `books`, `audit`.
-- **Controllers** solo mapean HTTP ↔ DTO; la lógica y las transacciones viven en los services.
-- **Transacciones**: create/update/delete de libro, cambio de imagen y export escriben el `AuditLog` en la misma `prisma.$transaction`; si la auditoría falla, la mutación hace rollback.
-- **Frontend** (`frontend/src/`): `app/` (router y providers), `features/auth` y `features/books` (páginas, hooks de React Query, API, schemas Zod), `shared/` (cliente HTTP con Bearer y manejo de 401, estados de UI, hooks).
-
-### 5.3 Flujo crear libro con imagen
-
-```mermaid
-sequenceDiagram
-  participant UI as Frontend
-  participant API as BooksController
-  participant S as BooksService
-  participant DB as PostgreSQL
-
-  UI->>API: POST /api/books (JSON)
-  API->>S: create(dto, userId)
-  S->>DB: $transaction: book.create + auditLog CREATE
-  API-->>UI: 201 BookResponse
-  opt hay imagen seleccionada
-    UI->>API: POST /api/books/:id/image (multipart)
-    alt upload ok
-      API-->>UI: 200 BookResponse con imageUrl
-    else upload falla
-      API-->>UI: 4xx/5xx
-      UI->>UI: ofrece reintentar solo el upload (mismo id)
-    end
-  end
-```
-
----
-
-## 6. Modelo relacional
-
-Fuente de verdad: [`backend/prisma/schema.prisma`](./backend/prisma/schema.prisma). Migraciones versionadas en `backend/prisma/migrations/`.
-
-```mermaid
-erDiagram
-  User ||--o{ AuditLog : "registra"
-  Author ||--o{ Book : "escribe"
-  Publisher ||--o{ Book : "publica"
-  Genre ||--o{ Book : "clasifica"
-
-  User {
-    uuid id PK
-    string email UK
-    string passwordHash
-    datetime createdAt
-    datetime updatedAt
-  }
-  Author {
-    uuid id PK
-    string name UK
-    datetime createdAt
-    datetime updatedAt
-  }
-  Publisher {
-    uuid id PK
-    string name UK
-    datetime createdAt
-    datetime updatedAt
-  }
-  Genre {
-    uuid id PK
-    string name UK
-    datetime createdAt
-    datetime updatedAt
-  }
-  Book {
-    uuid id PK
-    string title
-    decimal price "Decimal(10,2)"
-    boolean available
-    string imagePath "nullable"
-    uuid authorId FK
-    uuid publisherId FK
-    uuid genreId FK
-    datetime deletedAt "nullable, soft delete"
-    datetime createdAt
-    datetime updatedAt
-  }
-  AuditLog {
-    uuid id PK
-    uuid userId FK
-    enum action "CREATE | UPDATE | DELETE | EXPORT"
-    string entity
-    string entityId "nullable"
-    json metadata "nullable"
-    datetime createdAt
-  }
-```
-
-### Índices
-
-| Índice | Tabla | Para qué |
-|--------|-------|----------|
-| `email` único | User | Lookup en login |
-| `name` único | Author, Publisher, Genre | Evita duplicados; selects ordenados |
-| `deletedAt` | Book | Predicado `deletedAt IS NULL` presente en casi todas las consultas |
-| `genreId`, `publisherId`, `authorId`, `available` | Book | Filtros del listado y del CSV |
-| `title`, `price` | Book | Ordenamiento dinámico (y prefijos de título) |
-| `(deletedAt, genreId, publisherId, authorId)` | Book | Patrón típico: activos + filtros combinados |
-| `createdAt`, `(entity, entityId)`, `userId` | AuditLog | Consultas por fecha, por entidad y por usuario |
-
-La justificación detallada está en [`specs/design.md` §4](./specs/design.md#4-índices-justificación).
+Detalle (capas Nest, flujo crear+imagen, **modelo relacional** e índices): [`docs/arquitectura.md`](./docs/arquitectura.md).
 
 ---
 
 ## 7. Decisiones de diseño
 
 | Tema | Decisión | Por qué |
-|------|----------|---------|
+|------|---------|---------|
 | Autenticación | JWT Bearer de vida corta (`30m`), bcrypt, guard global con `@Public()` para excepciones | Todo protegido por defecto; olvidar un decorador no deja una ruta abierta |
 | Fuerza bruta | `@nestjs/throttler` en `POST /auth/login` (5/min → 429) | Mitiga ataques de diccionario sin penalizar el resto del API |
 | Precio | `Decimal(10,2)` en DB, serializado como string (`"19.99"`) | Evita errores de redondeo de float en dinero |
 | Borrado | Soft delete con `deletedAt` | Conserva historial y trazabilidad con la auditoría |
-| Auditoría | Tabla `AuditLog` append-only; `AuditService.log(tx, …)` recibe el cliente transaccional | La auditoría se confirma o revierte junto con la operación |
+| Auditoría | Tabla `AuditLog` append-only; `AuditService.log(tx, …)` recibe el cliente transaccional. Se **consulta** por SQL/Prisma Studio, no por la SPA | La auditoría se confirma o revierte junto con la operación; no hay rol admin ni endpoint de lectura (ver `docs/pending.md` §14) |
 | Búsqueda | `contains` case-insensitive solo sobre `title` | Alcance acotado en la spec; `pg_trgm` queda como evolución |
 | Consulta avanzada | Un builder de `where`/`orderBy` compartido por listado y CSV | Garantiza que el CSV respete exactamente los mismos filtros |
 | Imágenes | Endpoint multipart separado, validación por magic bytes (no por `Content-Type`), nombre `<bookId>-<timestamp>.<ext>`, se borra la anterior | No confiar en el cliente; nombres no adivinables por el usuario ni colisiones |
 | Crear + imagen | Dos requests (JSON y multipart) con reintento solo del upload | Un fallo de red en la imagen no duplica libros |
 | Errores | Filtro global con formato `{ statusCode, message, error, timestamp, path }` | Contrato uniforme para el frontend |
-| Observabilidad | `LoggingInterceptor` global: método, ruta, status, latencia y `userId` por request; re-lanza la excepción sin tocarla | Trazabilidad en producción sin duplicar el formateo de errores del filtro |
+| Observabilidad | `LoggingInterceptor` global: método, ruta, status, latencia y `userId` por request; re-lanza la excepción sin tocarla. Se ve en `docker compose logs backend` | Trazabilidad en producción sin duplicar el formateo de errores del filtro |
 | Contrato de respuestas | El interceptor **no** envuelve el payload en `{ data, meta }` | El listado ya devuelve su propio `{ data, meta }`: un envelope global lo anidaría dos veces (`data.data`) y además rompería el `text/csv` del export |
 | Errores de render | `ErrorBoundary` de React envolviendo el router | React Query cubre los errores de red, pero un throw en render dejaría la SPA en blanco |
 | Configuración | Validación de env con Zod al arrancar | Falla rápido y explícito ante configuración inválida |
@@ -394,6 +298,8 @@ cd frontend
 npm install
 npm run dev                # http://localhost:5173
 ```
+
+En este modo, Prisma Studio (`cd backend && npx prisma studio`) es la forma más directa de ver `AuditLog` en el navegador (http://localhost:5555).
 
 ---
 

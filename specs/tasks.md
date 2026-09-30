@@ -434,9 +434,12 @@ Plan de implementación a partir de [`requirements.md`](./requirements.md) y [`d
 - **REQ:** REQ-DOC1, REQ-DOC2, REQ-DOC3, REQ-DOC4, REQ-DOC5
 - **Depende de:** backend usable (ideal T11+) y frontend usable (ideal T17)
 - **Archivos principales:**
-  - `README.md` (instalación, uso, arquitectura, decisiones/supuestos A1–A6)
+  - `README.md` (instalación, uso, arquitectura, decisiones/supuestos A1–A6; índice hacia docs de validación)
+  - `docs/guia-de-validacion.md` (recorrido REQ por REQ para un revisor)
+  - `docs/auditoria-y-observabilidad.md` (cómo visualizar `AuditLog` y el `LoggingInterceptor`; no hay UI de auditoría)
+  - `docs/arquitectura.md` (capas, ER, índices; Mermaid de DOC3–DOC4)
   - Decoradores Swagger en controllers + `/api/docs`
-  - Diagramas (Mermaid en README o imágenes; ER / arquitectura según DOC3–DOC4)
+  - Diagramas (Mermaid en README / `docs/arquitectura.md`)
   - `docs/pending.md` (P2 y no implementado: refresh, S3, pg_trgm, N:M, etc.)
 - **Incluye tests:**
   - Smoke: `/api/docs` responde 200 (e2e o curl en script).

@@ -19,7 +19,7 @@ Lo que no está implementado en la versión actual, con una propuesta de cómo s
 | 11 | Botones de exportar CSV y eliminar en la SPA | brecha conocida | P1 |
 | 12 | Fallback SPA en nginx (deep links) | brecha conocida | P1 |
 | 13 | Healthcheck del backend en Docker Compose | brecha conocida (design §8) | P1 |
-| 14 | Consulta del historial de auditoría | evolución | Evolución |
+| 14 | Consulta del historial de auditoría | evolución | Evolución (lectura SQL/logs documentada) |
 
 ---
 
@@ -123,6 +123,8 @@ Fuera de alcance según requirements §10. **Cómo se implementaría:** `role` e
 
 ## 14. Consulta del historial de auditoría
 
-**Hoy:** `AuditLog` se escribe en cada mutación y export, pero no hay endpoint para leerlo.
+**Hoy:** `AuditLog` se escribe en cada mutación y export (REQ-B6), y el interceptor deja una línea por request en stdout (REQ-B9). No hay endpoint ni pantalla en la SPA para leer el historial.
 
-**Cómo se implementaría:** `GET /api/audit-logs` paginado con filtros `entity`, `entityId`, `userId`, `action` y rango de fechas (aprovecha los índices existentes), restringido a un rol administrador una vez que existan roles (punto 10).
+**Cómo verlo ahora** (sin código nuevo): Prisma Studio, SQL contra Postgres o `docker compose logs backend`. Pasos y consultas en [`auditoria-y-observabilidad.md`](./auditoria-y-observabilidad.md); el revisor puede marcar REQ-B6/B9 con [`guia-de-validacion.md`](./guia-de-validacion.md) §7–§8.
+
+**Cómo se implementaría una UI/API de lectura:** `GET /api/audit-logs` paginado con filtros `entity`, `entityId`, `userId`, `action` y rango de fechas (aprovecha los índices existentes), restringido a un rol administrador una vez que existan roles (punto 10). En la SPA, una página `/audit` de solo lectura.
