@@ -20,7 +20,7 @@ describe('AppModule', () => {
     process.env = originalEnv;
   });
 
-  it('compila el módulo raíz con config, prisma y health', async () => {
+  it('compila el módulo raíz con config, prisma, health y auth', async () => {
     const { AppModule } = await import('./app.module');
 
     const moduleRef = await Test.createTestingModule({
