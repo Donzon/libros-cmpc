@@ -47,6 +47,20 @@ docker compose up --build
 
 Ese único comando levanta los tres servicios. Al arrancar, el backend ejecuta automáticamente `prisma migrate deploy` y `prisma db seed` (ver `backend/docker-entrypoint.sh`), así que no hay pasos manuales de base de datos.
 
+Cuando el stack esté arriba, abre **http://localhost:5173** e inicia sesión con el usuario del seed:
+
+> [!IMPORTANT]
+> **Credenciales de prueba — úsalas para entrar a la app**
+>
+> ```
+> Email:       admin@cmpc.local
+> Contraseña:  Admin123!
+> ```
+>
+> No hay registro público (supuesto A3): este es el único usuario. Se crea en el seed con la contraseña hasheada con bcrypt.
+
+El seed también carga 3 autores, 3 editoriales, 3 géneros y 3 libros de ejemplo. Es idempotente (usa `upsert`), por lo que reiniciar el backend no duplica datos.
+
 | Servicio | URL |
 |----------|-----|
 | Frontend (SPA) | http://localhost:5173 |
@@ -55,14 +69,6 @@ Ese único comando levanta los tres servicios. Al arrancar, el backend ejecuta a
 | OpenAPI JSON | http://localhost:3000/api/docs-json |
 | Health | http://localhost:3000/api/health |
 | PostgreSQL | `localhost:5432` (usuario/clave/db: `cmpc` / `cmpc` / `cmpc_libros`) |
-
-### Credenciales de prueba (seed)
-
-| Email | Password |
-|-------|----------|
-| `admin@cmpc.local` | `Admin123!` |
-
-No hay registro público (supuesto A3): el usuario se crea en el seed con la contraseña hasheada con bcrypt. El seed también carga 3 autores, 3 editoriales, 3 géneros y 3 libros de ejemplo. Es idempotente (usa `upsert`), por lo que reiniciar el backend no duplica datos.
 
 ### Comprobar que todo está arriba
 
@@ -106,7 +112,7 @@ Las variables del backend se validan al arrancar con Zod (`backend/src/modules/c
 
 Checklist paso a paso alineado a cada REQ: [`docs/guia-de-validacion.md`](./docs/guia-de-validacion.md).
 
-1. Abre http://localhost:5173 e inicia sesión con las credenciales del seed. Cualquier ruta protegida sin sesión redirige al login; si el token expira (401), la sesión se limpia y vuelves al login.
+1. Abre http://localhost:5173 e inicia sesión con `admin@cmpc.local` / `Admin123!` (las mismas del [inicio rápido](#1-inicio-rápido)). Cualquier ruta protegida sin sesión redirige al login; si el token expira (401), la sesión se limpia y vuelves al login.
 2. **Listado (`/books`)**: tabla paginada del lado del servidor con el total de resultados.
    - Filtros combinables por género, editorial, autor y disponibilidad.
    - Orden por título, precio, autor o fecha de creación, ascendente o descendente.
