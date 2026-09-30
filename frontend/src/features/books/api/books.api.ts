@@ -32,21 +32,47 @@ export type BooksListResponse = {
   meta: BooksListMeta;
 };
 
+export const BOOK_SORT_BY = ['title', 'price', 'createdAt', 'author'] as const;
+export type BookSortBy = (typeof BOOK_SORT_BY)[number];
+
+export const BOOK_SORT_ORDER = ['asc', 'desc'] as const;
+export type BookSortOrder = (typeof BOOK_SORT_ORDER)[number];
+
 export type ListBooksParams = {
   page?: number;
   limit?: number;
+  search?: string;
+  genreId?: string;
+  publisherId?: string;
+  authorId?: string;
+  available?: boolean;
+  sortBy?: BookSortBy;
+  sortOrder?: BookSortOrder;
 };
 
-function buildQueryString(params: ListBooksParams): string {
+function appendIfDefined(
+  searchParams: URLSearchParams,
+  key: string,
+  value: string | number | boolean | undefined,
+): void {
+  if (value === undefined) {
+    return;
+  }
+  searchParams.set(key, String(value));
+}
+
+export function buildBooksQueryString(params: ListBooksParams): string {
   const searchParams = new URLSearchParams();
 
-  if (params.page !== undefined) {
-    searchParams.set('page', String(params.page));
-  }
-
-  if (params.limit !== undefined) {
-    searchParams.set('limit', String(params.limit));
-  }
+  appendIfDefined(searchParams, 'page', params.page);
+  appendIfDefined(searchParams, 'limit', params.limit);
+  appendIfDefined(searchParams, 'search', params.search);
+  appendIfDefined(searchParams, 'genreId', params.genreId);
+  appendIfDefined(searchParams, 'publisherId', params.publisherId);
+  appendIfDefined(searchParams, 'authorId', params.authorId);
+  appendIfDefined(searchParams, 'available', params.available);
+  appendIfDefined(searchParams, 'sortBy', params.sortBy);
+  appendIfDefined(searchParams, 'sortOrder', params.sortOrder);
 
   const qs = searchParams.toString();
   return qs.length > 0 ? `?${qs}` : '';
@@ -55,5 +81,7 @@ function buildQueryString(params: ListBooksParams): string {
 export async function listBooks(
   params: ListBooksParams = {},
 ): Promise<BooksListResponse> {
-  return http.get<BooksListResponse>(`/books${buildQueryString(params)}`);
+  return http.get<BooksListResponse>(
+    `/books${buildBooksQueryString(params)}`,
+  );
 }
