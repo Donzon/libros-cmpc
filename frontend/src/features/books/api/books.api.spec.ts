@@ -1,6 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as httpModule from '../../../shared/api/http';
-import { listBooks } from './books.api';
+import {
+  createBook,
+  getBook,
+  listBooks,
+  updateBook,
+} from './books.api';
 
 describe('listBooks', () => {
   afterEach(() => {
@@ -66,5 +71,51 @@ describe('listBooks', () => {
     expect(qs.get('available')).toBe('true');
     expect(qs.get('sortBy')).toBe('price');
     expect(qs.get('sortOrder')).toBe('desc');
+  });
+});
+
+describe('books mutations (T16)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('getBook GET /books/:id', async () => {
+    const book = { id: 'd1111111-1111-4111-8111-111111111111', title: 'X' };
+    const get = vi.spyOn(httpModule.http, 'get').mockResolvedValue(book);
+
+    const result = await getBook(book.id);
+
+    expect(get).toHaveBeenCalledWith(`/books/${book.id}`);
+    expect(result).toEqual(book);
+  });
+
+  it('createBook POST /books', async () => {
+    const payload = {
+      title: 'Nuevo',
+      price: '10.00',
+      available: true,
+      authorId: 'a1111111-1111-4111-8111-111111111111',
+      publisherId: 'b1111111-1111-4111-8111-111111111111',
+      genreId: 'c1111111-1111-4111-8111-111111111111',
+    };
+    const post = vi
+      .spyOn(httpModule.http, 'post')
+      .mockResolvedValue({ id: '1', ...payload });
+
+    await createBook(payload);
+
+    expect(post).toHaveBeenCalledWith('/books', payload);
+  });
+
+  it('updateBook PATCH /books/:id', async () => {
+    const id = 'd1111111-1111-4111-8111-111111111111';
+    const payload = { title: 'Editado' };
+    const patch = vi
+      .spyOn(httpModule.http, 'patch')
+      .mockResolvedValue({ id, title: 'Editado' });
+
+    await updateBook(id, payload);
+
+    expect(patch).toHaveBeenCalledWith(`/books/${id}`, payload);
   });
 });

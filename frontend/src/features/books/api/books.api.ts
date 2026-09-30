@@ -20,6 +20,20 @@ export type BookListItem = {
   genre: BookRelation;
 };
 
+/** Detalle/respuesta de mutación (misma forma que list item para el form). */
+export type BookResponse = BookListItem;
+
+export type CreateBookPayload = {
+  title: string;
+  price: string;
+  available: boolean;
+  authorId: string;
+  publisherId: string;
+  genreId: string;
+};
+
+export type UpdateBookPayload = Partial<CreateBookPayload>;
+
 export type BooksListMeta = {
   page: number;
   limit: number;
@@ -84,4 +98,21 @@ export async function listBooks(
   return http.get<BooksListResponse>(
     `/books${buildBooksQueryString(params)}`,
   );
+}
+
+export async function getBook(id: string): Promise<BookResponse> {
+  return http.get<BookResponse>(`/books/${id}`);
+}
+
+export async function createBook(
+  payload: CreateBookPayload,
+): Promise<BookResponse> {
+  return http.post<BookResponse>('/books', payload);
+}
+
+export async function updateBook(
+  id: string,
+  payload: UpdateBookPayload,
+): Promise<BookResponse> {
+  return http.patch<BookResponse>(`/books/${id}`, payload);
 }

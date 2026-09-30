@@ -1,0 +1,10 @@
+{
+  "dependencies": {
+    "@hookform/resolvers": "^5.9.1",
+    "react-hook-form": "^7.89.0",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@testing-library/user-event": "^14.6.7"
+  }
+}

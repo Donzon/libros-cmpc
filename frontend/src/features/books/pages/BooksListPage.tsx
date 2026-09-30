@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   DEFAULT_DEBOUNCE_MS,
   useDebouncedValue,
@@ -106,6 +107,11 @@ export function BooksListPage() {
   return (
     <main>
       <h1>Libros</h1>
+      <p>
+        <Link to="/books/new" data-testid="books-new-link">
+          Nuevo libro
+        </Link>
+      </p>
 
       <BooksListControls
         filters={filters}
@@ -157,6 +163,7 @@ export function BooksListPage() {
                 <th scope="col">Género</th>
                 <th scope="col">Precio</th>
                 <th scope="col">Disponibilidad</th>
+                <th scope="col">Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -168,6 +175,14 @@ export function BooksListPage() {
                   <td>{book.genre.name}</td>
                   <td>{book.price}</td>
                   <td>{formatAvailability(book.available)}</td>
+                  <td>
+                    <Link
+                      to={`/books/${book.id}/edit`}
+                      data-testid={`books-edit-${book.id}`}
+                    >
+                      Editar
+                    </Link>
+                  </td>
                 </tr>
               ))}
             </tbody>
