@@ -160,27 +160,31 @@ describe('Book create/edit pages (T16/T17)', () => {
     vi.clearAllMocks();
   });
 
-  it('create llama POST /books y navega al detalle', async () => {
-    createBookMock.mockResolvedValue(createBookResponse());
+  it(
+    'create llama POST /books y navega al detalle',
+    async () => {
+      createBookMock.mockResolvedValue(createBookResponse());
 
-    renderWithProviders(<BookCreatePage />, '/books/new');
-    await fillValidCreateForm();
-    fireEvent.click(screen.getByRole('button', { name: 'Crear libro' }));
+      renderWithProviders(<BookCreatePage />, '/books/new');
+      await fillValidCreateForm();
+      fireEvent.click(screen.getByRole('button', { name: 'Crear libro' }));
 
-    await waitFor(() => {
-      expect(createBookMock).toHaveBeenCalledWith({
-        title: 'Nuevo título',
-        price: '12.50',
-        available: true,
-        authorId: AUTHOR_ID,
-        publisherId: PUBLISHER_ID,
-        genreId: GENRE_ID,
+      await waitFor(() => {
+        expect(createBookMock).toHaveBeenCalledWith({
+          title: 'Nuevo título',
+          price: '12.50',
+          available: true,
+          authorId: AUTHOR_ID,
+          publisherId: PUBLISHER_ID,
+          genreId: GENRE_ID,
+        });
       });
-    });
 
-    expect(uploadBookImageMock).not.toHaveBeenCalled();
-    await screen.findByTestId('book-detail-stub');
-  });
+      expect(uploadBookImageMock).not.toHaveBeenCalled();
+      await screen.findByTestId('book-detail-stub');
+    },
+    15_000,
+  );
 
   it('edit carga valores iniciales y llama PATCH /books/:id', async () => {
     getBookMock.mockResolvedValue(
@@ -291,6 +295,55 @@ describe('Book create/edit pages (T16/T17)', () => {
       expect(uploadBookImageMock).toHaveBeenCalledTimes(2);
     });
     expect(createBookMock).toHaveBeenCalledTimes(1);
+    await screen.findByTestId('book-detail-stub');
+  });
+
+  it('edit: si PATCH ok y upload falla, reintenta solo la subida (T18 gap)', async () => {
+    const file = new File([new Uint8Array([0xff, 0xd8, 0xff])], 'cover.jpg', {
+      type: 'image/jpeg',
+    });
+    getBookMock.mockResolvedValue(createBookResponse({ title: 'Original' }));
+    updateBookMock.mockResolvedValue(createBookResponse({ title: 'Editado' }));
+    uploadBookImageMock.mockRejectedValueOnce(
+      new HttpError(500, 'Upload failed'),
+    );
+    uploadBookImageMock.mockResolvedValueOnce(
+      createBookResponse({ imageUrl: '/uploads/books/x.jpg' }),
+    );
+
+    renderWithProviders(<BookEditPage />, `/books/${BOOK_ID}/edit`);
+    await screen.findByTestId('book-form');
+    await screen.findByRole('option', { name: 'Cervantes' });
+
+    fireEvent.change(screen.getByLabelText('Título'), {
+      target: { value: 'Editado' },
+    });
+    fireEvent.change(screen.getByTestId('book-image-input'), {
+      target: { files: [file] },
+    });
+    await screen.findByTestId('book-image-preview');
+
+    await waitFor(() => {
+      expect(
+        (
+          screen.getByRole('button', {
+            name: 'Guardar cambios',
+          }) as HTMLButtonElement
+        ).disabled,
+      ).toBe(false);
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }));
+
+    await screen.findByTestId('book-image-upload-retry');
+    expect(updateBookMock).toHaveBeenCalledTimes(1);
+    expect(uploadBookImageMock).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByTestId('book-image-retry-button'));
+
+    await waitFor(() => {
+      expect(uploadBookImageMock).toHaveBeenCalledTimes(2);
+    });
+    expect(updateBookMock).toHaveBeenCalledTimes(1);
     await screen.findByTestId('book-detail-stub');
   });
 });

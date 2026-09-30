@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createHttpClient, UnauthorizedError } from './http-client';
+import {
+  createHttpClient,
+  getApiBaseUrl,
+  HttpError,
+  UnauthorizedError,
+} from './http-client';
 import { createTokenStorage } from './token-storage';
 
 function createMemoryStorage(): Storage {
@@ -101,5 +106,81 @@ describe('createHttpClient', () => {
     await expect(client.get('/books')).rejects.toBeInstanceOf(UnauthorizedError);
     expect(storage.getAccessToken()).toBeNull();
     expect(onUnauthorized).toHaveBeenCalledTimes(1);
+  });
+
+  it('post/patch/delete delegan en request con el método correcto', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
+    const client = createHttpClient({
+      baseUrl: 'http://localhost:3000/api/',
+      getAccessToken: () => null,
+      clearAccessToken: () => undefined,
+      fetchImpl,
+    });
+
+    await expect(client.post('/books', { title: 'A' })).resolves.toBeUndefined();
+    await expect(client.patch('/books/1', { title: 'B' })).resolves.toBeUndefined();
+    await expect(client.delete('/books/1')).resolves.toBeUndefined();
+
+    expect(fetchImpl.mock.calls.map((c) => (c[1] as RequestInit).method)).toEqual([
+      'POST',
+      'PATCH',
+      'DELETE',
+    ]);
+  });
+
+  it('envía FormData sin forzar Content-Type JSON', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      new Response('ok', { status: 200, headers: { 'Content-Type': 'text/plain' } }),
+    );
+    const client = createHttpClient({
+      baseUrl: 'http://localhost:3000/api',
+      getAccessToken: () => null,
+      clearAccessToken: () => undefined,
+      fetchImpl,
+    });
+    const form = new FormData();
+    form.append('file', new Blob(['x']), 'a.png');
+
+    await expect(client.post('/books/1/image', form)).resolves.toBe('ok');
+    const [, init] = fetchImpl.mock.calls[0] as [string, RequestInit];
+    expect(new Headers(init.headers).get('Content-Type')).toBeNull();
+    expect(init.body).toBe(form);
+  });
+
+  it('HttpError usa message del body JSON (string o array)', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ message: 'Bad request' }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ message: ['a', 'b'] }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
+
+    const client = createHttpClient({
+      baseUrl: 'http://localhost:3000/api',
+      getAccessToken: () => null,
+      clearAccessToken: () => undefined,
+      fetchImpl,
+    });
+
+    await expect(client.get('/x')).rejects.toMatchObject({
+      name: 'HttpError',
+      message: 'Bad request',
+      status: 400,
+    } satisfies Partial<HttpError>);
+    await expect(client.get('/y')).rejects.toMatchObject({
+      message: 'a, b',
+    });
+  });
+
+  it('getApiBaseUrl usa fallback local si no hay VITE_API_BASE_URL', () => {
+    expect(getApiBaseUrl()).toMatch(/\/api$/);
   });
 });

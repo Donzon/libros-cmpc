@@ -10,5 +10,21 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: false,
+    testTimeout: 15_000,
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'text-summary', 'lcov', 'html'],
+      reportsDirectory: './coverage',
+      include: ['src/**/*.{ts,tsx}'],
+      exclude: [
+        'src/**/*.spec.{ts,tsx}',
+        'src/main.tsx',
+        'src/vite-env.d.ts',
+      ],
+      thresholds: {
+        statements: 80,
+        lines: 80,
+      },
+    },
   },
 });

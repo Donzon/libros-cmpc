@@ -57,4 +57,32 @@ describe('loginRequest', () => {
       status: 401,
     } satisfies Partial<HttpError>);
   });
+
+  it('parsea message array y cae a texto genérico si no hay JSON', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ message: ['email inválido', 'password'] }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      )
+      .mockResolvedValueOnce(new Response('nope', { status: 500 }));
+
+    await expect(
+      loginRequest(
+        { email: 'x', password: 'y' },
+        { baseUrl: 'http://localhost:3000/api', fetchImpl },
+      ),
+    ).rejects.toMatchObject({ message: 'email inválido, password' });
+
+    await expect(
+      loginRequest(
+        { email: 'x', password: 'y' },
+        { baseUrl: 'http://localhost:3000/api', fetchImpl },
+      ),
+    ).rejects.toMatchObject({
+      message: 'Request failed with status 500',
+    });
+  });
 });

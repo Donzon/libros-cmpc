@@ -8,48 +8,54 @@ import { BookEditPage } from '../features/books/pages/BookEditPage';
 import { BooksListPage } from '../features/books/pages/BooksListPage';
 import { HomePage } from './pages/placeholders';
 
+export function AppRoutes() {
+  return (
+    <AuthProvider>
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route
+          path="/books"
+          element={
+            <ProtectedRoute>
+              <BooksListPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/books/new"
+          element={
+            <ProtectedRoute>
+              <BookCreatePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/books/:id/edit"
+          element={
+            <ProtectedRoute>
+              <BookEditPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/books/:id"
+          element={
+            <ProtectedRoute>
+              <BookDetailPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </AuthProvider>
+  );
+}
+
 export function AppRouter() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route
-            path="/books"
-            element={
-              <ProtectedRoute>
-                <BooksListPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/books/new"
-            element={
-              <ProtectedRoute>
-                <BookCreatePage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/books/:id/edit"
-            element={
-              <ProtectedRoute>
-                <BookEditPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/books/:id"
-            element={
-              <ProtectedRoute>
-                <BookDetailPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </AuthProvider>
+      <AppRoutes />
     </BrowserRouter>
   );
 }
