@@ -124,7 +124,7 @@ flowchart TB
 | Imagen | Un `imagePath` nullable + endpoint multipart | REQ-D5, REQ-B3.2, A4 |
 | Auditoría | Tabla `AuditLog` append-only en la misma `$transaction` | REQ-B6, REQ-DB4 |
 | CSV | Mismos filtros que el listado; excluye soft-deleted | REQ-B4, A5 |
-| Lookups | GET de autores/editoriales/géneros para selects | Formularios F3 |
+| Lookups | GET authors/publishers/genres; POST authors | Formularios F3 / F3.3 |
 | Interceptor de respuestas | `LoggingInterceptor` global de observabilidad; **sin** envelope global | REQ-B9; el listado ya trae su `{ data, meta }` y el CSV de REQ-B4 no es JSON |
 
 ---
@@ -139,7 +139,7 @@ Arquitectura modular por dominio (REQ-B1). Cada módulo exporta solo lo necesari
 | `PrismaModule` (global) | `PrismaService` tipado; lifecycle `onModuleInit` / `onModuleDestroy` | Config |
 | `AuthModule` | `POST /auth/login`, JwtStrategy, JwtAuthGuard global, `@Public()` | Users, Config |
 | `UsersModule` | Lectura de usuario por email/id (sin registro) | Prisma |
-| `AuthorsModule` | Solo `GET` para selects del formulario (sin POST/alta) | Prisma |
+| `AuthorsModule` | `GET` de autores para selects y `POST` para alta por nombre (reutiliza si ya existe) | Prisma, Audit |
 | `PublishersModule` | Solo `GET` para selects (sin POST/alta) | Prisma |
 | `GenresModule` | Solo `GET` para selects (sin POST/alta) | Prisma |
 | `BooksModule` | CRUD, filtros, soft delete, imagen, export CSV | Prisma, Audit, FileStorage |
@@ -148,7 +148,7 @@ Arquitectura modular por dominio (REQ-B1). Cada módulo exporta solo lo necesari
 ### 2.1 Patrones por módulo
 
 - **Controllers delgados**: sin acceso directo a Prisma.
-- **DTOs** por operación: `LoginDto`, `CreateBookDto`, `UpdateBookDto`, `ListBooksQueryDto`.
+- **DTOs** por operación: `LoginDto`, `CreateBookDto`, `UpdateBookDto`, `ListBooksQueryDto`, `CreateAuthorDto`.
 - **ValidationPipe** global (`whitelist`, `forbidNonWhitelisted`, `transform`).
 - **Transacciones** (`prisma.$transaction`) en create/update/delete de libro + auditoría, y en export (solo lectura + log de auditoría).
 - **Swagger**: decoradores en controllers; documento OpenAPI en `/api/docs` (REQ-DOC2).
@@ -162,8 +162,8 @@ Arquitectura modular por dominio (REQ-B1). Cada módulo exporta solo lo necesari
 
 Stack de datos y formularios:
 
-- **TanStack React Query**: cache y estado de servidor (listado, detalle, lookups `GET /authors|publishers|genres`, mutaciones create/update/delete/export). Invalidación de queries tras mutaciones exitosas.
-- **react-hook-form + Zod**: formulario único create/edit; schema Zod compartido (o espejo del DTO); errores por campo en vivo; submit bloqueado si inválido (REQ-F3, F3.1).
+- **TanStack React Query**: cache y estado de servidor (listado, detalle, lookups `GET /authors|publishers|genres`, mutación `POST /authors`, mutaciones create/update/delete/export de libros). Invalidación de queries tras mutaciones exitosas.
+- **react-hook-form + Zod**: formulario único create/edit; schema Zod compartido (o espejo del DTO); errores por campo en vivo; submit bloqueado si inválido; autor existente o nuevo (REQ-F3, F3.1, F3.3).
 - Cliente HTTP con interceptor que adjunta `Authorization: Bearer <token>`.
 - 401 → limpia token y redirige a login (REQ-F1).
 - Listado: query params espejo del backend; debounce ~300 ms en `search` (solo título) (REQ-F2.4).
@@ -444,13 +444,14 @@ Respuesta listado:
 
 ### 5.3 Lookups (formularios)
 
-Solo lectura: no hay `POST`/`PATCH`/`DELETE` de autores, editoriales ni géneros. Los datos llegan por seed.
+Editoriales y géneros son de solo lectura (seed). Autores admiten alta desde el formulario de libro (REQ-F3.3): si el nombre ya existe (case-insensitive) se reutiliza.
 
 | Método | Ruta | Auth | Descripción | Status |
 |--------|------|------|-------------|--------|
 | `GET` | `/authors` | JWT | Lista `{ id, name }[]` ordenada por name | 200 |
-| `GET` | `/publishers` | JWT | Idem | 200 |
-| `GET` | `/genres` | JWT | Idem | 200 |
+| `POST` | `/authors` | JWT | Body `{ name }` (1–200, trim). Crea o reutiliza | 201 / 400 / 401 |
+| `GET` | `/publishers` | JWT | Idem GET authors | 200 |
+| `GET` | `/genres` | JWT | Idem GET authors | 200 |
 
 ### 5.4 Health
 

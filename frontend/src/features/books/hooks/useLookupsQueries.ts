@@ -1,5 +1,6 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  createAuthor,
   listAuthors,
   listGenres,
   listPublishers,
@@ -27,5 +28,16 @@ export function useGenresQuery() {
   return useQuery({
     queryKey: [GENRES_QUERY_KEY],
     queryFn: listGenres,
+  });
+}
+
+export function useCreateAuthorMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (name: string) => createAuthor(name),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: [AUTHORS_QUERY_KEY] });
+    },
   });
 }

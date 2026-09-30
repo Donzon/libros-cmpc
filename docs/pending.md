@@ -2,6 +2,10 @@
 
 Lo que no está implementado en la versión actual, con una propuesta de cómo se implementaría. Referencias: [`specs/requirements.md`](../specs/requirements.md) §8–§10 y [`specs/design.md`](../specs/design.md) §11.
 
+Ningún punto de esta lista es un requisito incumplido del enunciado de la prueba. El PDF está cubierto; acá quedan evoluciones de los supuestos (A1–A6), hardening de producción y mejoras P2. El único ítem de *design* aún no cableado es el healthcheck del servicio `backend` en Compose (el PDF solo pide el `docker-compose.yml` del stack; `GET /api/health` sí existe).
+
+El fallback SPA de nginx (deep links / recarga de `/login` o `/books`) **ya está implementado** (`frontend/nginx.conf` + `Dockerfile`). No es pendiente.
+
 ## Resumen
 
 | # | Tema | Origen | Prioridad |
@@ -16,9 +20,8 @@ Lo que no está implementado en la versión actual, con una propuesta de cómo s
 | 8 | CI/CD | P2 | P2 |
 | 9 | Caché | P2 | P2 |
 | 10 | Roles y permisos avanzados | fuera de alcance | Evolución |
-| 11 | Fallback SPA en nginx (deep links) | brecha conocida | P1 |
-| 12 | Healthcheck del backend en Docker Compose | brecha conocida (design §8) | P1 |
-| 13 | Consulta del historial de auditoría | evolución | Evolución (lectura SQL/logs documentada) |
+| 11 | Healthcheck del backend en Docker Compose | design §8 | P1 (design, no el PDF) |
+| 12 | Consulta del historial de auditoría | evolución | Evolución (lectura SQL/logs documentada) |
 
 ---
 
@@ -99,19 +102,13 @@ Lo que no está implementado en la versión actual, con una propuesta de cómo s
 
 Fuera de alcance según requirements §10. **Cómo se implementaría:** `role` enum en `User` (o tablas `Role`/`Permission`), claim en el JWT, decorador `@Roles()` + `RolesGuard` global, y endpoints de administración de usuarios.
 
-## 11. Fallback SPA en nginx (deep links)
+## 11. Healthcheck del backend en Docker Compose
 
-**Hoy:** el contenedor `frontend` usa la configuración por defecto de nginx; navegar dentro de la app funciona, pero recargar o abrir directamente una ruta como `/books` responde 404.
+**Hoy:** `GET /api/health` existe (y responde 503 si la DB cae). Compose espera a que Postgres esté healthy antes de arrancar el backend, pero el servicio `backend` no tiene `healthcheck` propio; el frontend solo declara `depends_on: backend` (sin `condition: service_healthy`).
 
-**Cómo se implementaría:** agregar `frontend/nginx.conf` con `location / { try_files $uri $uri/ /index.html; }` y copiarlo en el `Dockerfile` a `/etc/nginx/conf.d/default.conf`.
+**Cómo se implementaría:** en el servicio `backend`, `healthcheck: { test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"], interval: 10s, retries: 5, start_period: 30s }` (`wget` viene en BusyBox de Alpine), y `frontend.depends_on.backend.condition: service_healthy`.
 
-## 12. Healthcheck del backend en Docker Compose
-
-**Hoy:** `GET /api/health` existe (y responde 503 si la DB cae), pero `docker-compose.yml` no define un `healthcheck` para el servicio `backend` como indica design §8.
-
-**Cómo se implementaría:** en el servicio `backend`, `healthcheck: { test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"], interval: 10s, retries: 5, start_period: 30s }` (`wget` viene en la imagen alpine), y `frontend.depends_on.backend.condition: service_healthy`.
-
-## 13. Consulta del historial de auditoría
+## 12. Consulta del historial de auditoría
 
 **Hoy:** `AuditLog` se escribe en cada mutación y export (REQ-B6), y el interceptor deja una línea por request en stdout (REQ-B9). No hay endpoint ni pantalla en la SPA para leer el historial.
 

@@ -7,7 +7,7 @@ Hay **dos canales distintos**. No se mezclan:
 | Tabla `AuditLog` | REQ-B6 | PostgreSQL | Quién hizo qué sobre un libro y cuándo (crear, editar, imagen, borrar, exportar CSV) |
 | `LoggingInterceptor` | REQ-B9 | stdout del contenedor `backend` | Cada request HTTP: método, ruta, status, latencia y `userId` si hay JWT |
 
-No hay pantalla de auditoría en la SPA ni un `GET /api/audit-logs` (ver [`pending.md`](./pending.md) §13). La forma de **ver** los registros es Prisma Studio, SQL o los logs del contenedor.
+No hay pantalla de auditoría en la SPA ni un `GET /api/audit-logs` (ver [`pending.md`](./pending.md) §12). La forma de **ver** los registros es Prisma Studio, SQL o los logs del contenedor.
 
 Prerrequisito: el stack levantado (`docker compose up`) y al menos un login con `admin@cmpc.local` / `Admin123!`.
 
@@ -20,6 +20,7 @@ Cada mutación de libro y cada export escribe una fila **en la misma transacció
 | Acción del usuario | `action` | `entity` | `entityId` | `metadata` |
 |--------------------|----------|----------|------------|------------|
 | Crear libro (`POST /api/books`) | `CREATE` | `Book` | id del libro | vacío |
+| Crear autor (`POST /api/authors`, solo si el nombre no existía) | `CREATE` | `Author` | id del autor | vacío |
 | Editar libro (`PATCH /api/books/:id`) | `UPDATE` | `Book` | id del libro | vacío |
 | Subir/cambiar imagen (`POST /api/books/:id/image`) | `UPDATE` | `Book` | id del libro | `{ "imagePath": "books/<id>-<ts>.<ext>" }` |
 | Soft delete (`DELETE /api/books/:id`) | `DELETE` | `Book` | id del libro | vacío |

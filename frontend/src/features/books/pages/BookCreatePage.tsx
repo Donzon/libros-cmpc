@@ -13,10 +13,15 @@ import {
 } from '../hooks/useBookMutations';
 import {
   useAuthorsQuery,
+  useCreateAuthorMutation,
   useGenresQuery,
   usePublishersQuery,
 } from '../hooks/useLookupsQueries';
-import type { BookFormValues } from '../schemas/book.schema';
+import {
+  toBookWritePayload,
+  type BookFormValues,
+} from '../schemas/book.schema';
+import { resolveBookAuthorId } from '../utils/resolve-book-author';
 
 function uploadErrorMessage(err: unknown): string {
   if (err instanceof HttpError) {
@@ -28,6 +33,7 @@ function uploadErrorMessage(err: unknown): string {
 export function BookCreatePage() {
   const navigate = useNavigate();
   const createMutation = useCreateBookMutation();
+  const createAuthorMutation = useCreateAuthorMutation();
   const uploadMutation = useUploadBookImageMutation();
   const [formError, setFormError] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -78,7 +84,12 @@ export function BookCreatePage() {
     setFormError(null);
     setUploadError(null);
     try {
-      const book = await createMutation.mutateAsync(values);
+      const authorId = await resolveBookAuthorId(values, (name) =>
+        createAuthorMutation.mutateAsync(name),
+      );
+      const book = await createMutation.mutateAsync(
+        toBookWritePayload(values, authorId),
+      );
       if (!selectedFile) {
         void navigate(`/books/${book.id}`);
         return;

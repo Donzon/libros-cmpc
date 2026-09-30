@@ -44,6 +44,10 @@ describe('Lookups HTTP (authors, publishers, genres)', () => {
   ];
 
   const authorFindMany = jest.fn();
+  const authorFindFirst = jest.fn();
+  const authorCreate = jest.fn();
+  const auditLogCreate = jest.fn();
+  const transaction = jest.fn();
   const publisherFindMany = jest.fn();
   const genreFindMany = jest.fn();
 
@@ -65,6 +69,21 @@ describe('Lookups HTTP (authors, publishers, genres)', () => {
 
     authorFindMany.mockImplementation(async () =>
       [...authors].sort((a, b) => a.name.localeCompare(b.name)),
+    );
+    authorFindFirst.mockResolvedValue(null);
+    authorCreate.mockImplementation(
+      async ({ data }: { data: { name: string } }) => ({
+        id: '99999999-9999-4999-8999-999999999999',
+        name: data.name,
+      }),
+    );
+    auditLogCreate.mockResolvedValue({ id: 'audit-author-1' });
+    transaction.mockImplementation(
+      async (callback: (tx: unknown) => Promise<unknown>) =>
+        callback({
+          author: { create: authorCreate },
+          auditLog: { create: auditLogCreate },
+        }),
     );
     publisherFindMany.mockImplementation(async () =>
       [...publishers].sort((a, b) => a.name.localeCompare(b.name)),
@@ -104,7 +123,12 @@ describe('Lookups HTTP (authors, publishers, genres)', () => {
         $disconnect: jest.fn(),
         onModuleInit: jest.fn(),
         onModuleDestroy: jest.fn(),
-        author: { findMany: authorFindMany },
+        author: {
+          findMany: authorFindMany,
+          findFirst: authorFindFirst,
+          create: authorCreate,
+        },
+        $transaction: transaction,
         publisher: { findMany: publisherFindMany },
         genre: { findMany: genreFindMany },
       })
@@ -179,11 +203,10 @@ describe('Lookups HTTP (authors, publishers, genres)', () => {
       await request(app.getHttpServer() as App).get(path).expect(401);
     });
 
-    it('POST/PATCH/DELETE no existen → 404', async () => {
+    it('PATCH/DELETE no existen → 404', async () => {
       const server = app.getHttpServer() as App;
       const auth = { Authorization: `Bearer ${accessToken}` };
 
-      await request(server).post(path).set(auth).send({ name: 'X' }).expect(404);
       await request(server)
         .patch(`${path}/some-id`)
         .set(auth)
@@ -192,4 +215,72 @@ describe('Lookups HTTP (authors, publishers, genres)', () => {
       await request(server).delete(`${path}/some-id`).set(auth).expect(404);
     });
   });
+
+  describe('POST /api/authors', () => {
+    beforeEach(() => {
+      authorFindFirst.mockReset();
+      authorCreate.mockClear();
+      authorFindFirst.mockResolvedValue(null);
+    });
+
+    it('con JWT crea un autor nuevo → 201', async () => {
+      authorFindFirst.mockResolvedValueOnce(null);
+
+      const response = await request(app.getHttpServer() as App)
+        .post('/api/authors')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ name: '  García Márquez  ' })
+        .expect(201);
+
+      expect(response.body).toEqual({
+        id: '99999999-9999-4999-8999-999999999999',
+        name: 'García Márquez',
+      });
+      expect(authorCreate).toHaveBeenCalledWith({
+        data: { name: 'García Márquez' },
+        select: { id: true, name: true },
+      });
+    });
+
+    it('si el nombre ya existe, reutiliza el autor → 201', async () => {
+      authorFindFirst.mockResolvedValueOnce(authors[1]);
+
+      const response = await request(app.getHttpServer() as App)
+        .post('/api/authors')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ name: 'allende' })
+        .expect(201);
+
+      expect(response.body).toEqual(authors[1]);
+      expect(authorCreate).not.toHaveBeenCalled();
+    });
+
+    it('sin token → 401', async () => {
+      await request(app.getHttpServer() as App)
+        .post('/api/authors')
+        .send({ name: 'X' })
+        .expect(401);
+    });
+
+    it('nombre vacío → 400', async () => {
+      await request(app.getHttpServer() as App)
+        .post('/api/authors')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .send({ name: '   ' })
+        .expect(400);
+    });
+  });
+
+  describe.each(['/api/publishers', '/api/genres'])(
+    '%s sigue siendo solo lectura',
+    (path) => {
+      it('POST no existe → 404', async () => {
+        await request(app.getHttpServer() as App)
+          .post(path)
+          .set('Authorization', `Bearer ${accessToken}`)
+          .send({ name: 'X' })
+          .expect(404);
+      });
+    },
+  );
 });

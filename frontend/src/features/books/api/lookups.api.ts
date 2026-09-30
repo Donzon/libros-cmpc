@@ -9,6 +9,10 @@ export async function listAuthors(): Promise<LookupItem[]> {
   return http.get<LookupItem[]>('/authors');
 }
 
+export async function createAuthor(name: string): Promise<LookupItem> {
+  return http.post<LookupItem>('/authors', { name });
+}
+
 export async function listPublishers(): Promise<LookupItem[]> {
   return http.get<LookupItem[]>('/publishers');
 }

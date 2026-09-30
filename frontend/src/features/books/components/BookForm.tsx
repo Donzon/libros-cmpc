@@ -58,6 +58,7 @@ export function BookForm({
     register,
     handleSubmit,
     trigger,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<BookFormValues>({
     resolver: zodResolver(bookFormSchema),
@@ -65,11 +66,20 @@ export function BookForm({
     mode: 'onChange',
   });
 
+  const authorMode = watch('authorMode');
+
   useEffect(() => {
     void trigger().finally(() => {
       setHasValidated(true);
     });
   }, [trigger]);
+
+  useEffect(() => {
+    if (!hasValidated) {
+      return;
+    }
+    void trigger();
+  }, [authorMode, hasValidated, trigger]);
 
   const hasFieldErrors = Object.keys(errors).length > 0;
   const fieldsDisabled =
@@ -135,27 +145,83 @@ export function BookForm({
         <Label htmlFor="available">Disponible</Label>
       </div>
 
-      <div className="grid gap-2">
-        <Label htmlFor="authorId">Autor</Label>
-        <Select
-          id="authorId"
-          disabled={fieldsDisabled}
-          aria-invalid={errors.authorId ? true : undefined}
-          {...register('authorId')}
-        >
-          <option value="">Selecciona un autor</option>
-          {authors.map((author) => (
-            <option key={author.id} value={author.id}>
-              {author.name}
-            </option>
-          ))}
-        </Select>
-        {errors.authorId ? (
-          <p role="alert" data-testid="error-authorId" className="text-sm text-destructive">
-            {errors.authorId.message}
-          </p>
-        ) : null}
-      </div>
+      <fieldset className="grid gap-2">
+        <legend className="text-sm font-medium">Autor</legend>
+        <div className="flex flex-wrap gap-4">
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="radio"
+              value="existing"
+              className="size-4 accent-primary"
+              disabled={fieldsDisabled}
+              data-testid="author-mode-existing"
+              {...register('authorMode')}
+            />
+            Usar uno existente
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="radio"
+              value="new"
+              className="size-4 accent-primary"
+              disabled={fieldsDisabled}
+              data-testid="author-mode-new"
+              {...register('authorMode')}
+            />
+            Crear uno nuevo
+          </label>
+        </div>
+
+        {authorMode === 'new' ? (
+          <div className="grid gap-2">
+            <Label htmlFor="authorName">Nombre del autor</Label>
+            <Input
+              id="authorName"
+              type="text"
+              disabled={fieldsDisabled}
+              aria-invalid={errors.authorName ? true : undefined}
+              data-testid="book-form-author-name"
+              {...register('authorName')}
+            />
+            {errors.authorName ? (
+              <p
+                role="alert"
+                data-testid="error-authorName"
+                className="text-sm text-destructive"
+              >
+                {errors.authorName.message}
+              </p>
+            ) : null}
+          </div>
+        ) : (
+          <div className="grid gap-2">
+            <Label htmlFor="authorId">Autor</Label>
+            <Select
+              id="authorId"
+              disabled={fieldsDisabled}
+              aria-invalid={errors.authorId ? true : undefined}
+              data-testid="book-form-author"
+              {...register('authorId')}
+            >
+              <option value="">Selecciona un autor</option>
+              {authors.map((author) => (
+                <option key={author.id} value={author.id}>
+                  {author.name}
+                </option>
+              ))}
+            </Select>
+            {errors.authorId ? (
+              <p
+                role="alert"
+                data-testid="error-authorId"
+                className="text-sm text-destructive"
+              >
+                {errors.authorId.message}
+              </p>
+            ) : null}
+          </div>
+        )}
+      </fieldset>
 
       <div className="grid gap-2">
         <Label htmlFor="publisherId">Editorial</Label>

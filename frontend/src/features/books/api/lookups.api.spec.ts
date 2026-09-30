@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as httpModule from '../../../shared/api/http';
-import { listAuthors, listGenres, listPublishers } from './lookups.api';
+import { listAuthors, createAuthor, listGenres, listPublishers } from './lookups.api';
 
 describe('lookups.api (T15)', () => {
   afterEach(() => {
@@ -16,6 +16,18 @@ describe('lookups.api (T15)', () => {
       { id: 'a1', name: 'Allende' },
     ]);
     expect(get).toHaveBeenCalledWith('/authors');
+  });
+
+  it('createAuthor POST /authors', async () => {
+    const post = vi
+      .spyOn(httpModule.http, 'post')
+      .mockResolvedValue({ id: 'a2', name: 'Cortázar' });
+
+    await expect(createAuthor('Cortázar')).resolves.toEqual({
+      id: 'a2',
+      name: 'Cortázar',
+    });
+    expect(post).toHaveBeenCalledWith('/authors', { name: 'Cortázar' });
   });
 
   it('listPublishers GET /publishers', async () => {

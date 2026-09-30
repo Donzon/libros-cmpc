@@ -155,7 +155,7 @@ Plan de implementación a partir de [`requirements.md`](./requirements.md) y [`d
 ## T6 — Lookups GET authors / publishers / genres
 
 - **Prioridad:** P0
-- **REQ:** REQ-B1 (módulos de dominio; soporte F3)
+- **REQ:** REQ-B1 (módulos de dominio; soporte F3, F3.3)
 - **Depende de:** T5
 - **Archivos principales:**
   - `backend/src/modules/authors/**`
@@ -164,10 +164,11 @@ Plan de implementación a partir de [`requirements.md`](./requirements.md) y [`d
 - **Incluye tests:**
   - Unit/e2e: cada `GET` con JWT → 200 y array `{ id, name }` ordenado por `name`.
   - Sin token → 401.
-  - No existen rutas POST/PATCH/DELETE para estas entidades (asserción 404 o ausencia en módulo).
+  - `POST /authors` autenticado crea o reutiliza por nombre; sin token → 401; nombre vacío → 400.
+  - `POST` de publishers/genres y `PATCH`/`DELETE` de authors/publishers/genres no existen (404).
 - **Criterio de terminado:**
   1. `GET /api/authors|publishers|genres` autenticados funcionan.
-  2. Solo lectura (sin POST).
+  2. `POST /api/authors` autenticado funciona; editoriales y géneros siguen de solo lectura.
   3. Tests en verde.
 
 ---
@@ -371,7 +372,7 @@ Plan de implementación a partir de [`requirements.md`](./requirements.md) y [`d
 ## T16 — Formulario alta/edición con RHF + Zod
 
 - **Prioridad:** P0
-- **REQ:** REQ-F3, REQ-F3.1
+- **REQ:** REQ-F3, REQ-F3.1, REQ-F3.3
 - **Depende de:** T14, T7, T6
 - **Archivos principales:**
   - `frontend/src/features/books/components/BookForm.tsx`
@@ -381,11 +382,13 @@ Plan de implementación a partir de [`requirements.md`](./requirements.md) y [`d
   - Validación reactiva: campo inválido muestra error; submit bloqueado.
   - Create llama `POST /books`; edit llama `PATCH /books/:id` con valores iniciales.
   - Selects cargan lookups.
+  - Autor nuevo: `POST /authors` y después create/update del libro con el `authorId` resultante.
 - **Criterio de terminado:**
   1. Un solo formulario para create y edit.
   2. Errores por campo en vivo; no envía si inválido.
   3. Tras éxito invalida queries y navega (listado o detalle).
-  4. Tests en verde.
+  4. Se puede elegir un autor existente o registrar uno nuevo.
+  5. Tests en verde.
 
 ---
 

@@ -48,7 +48,7 @@ Al terminar un bloque, marca el REQ en la [tabla resumen](#12-resumen-req--dónd
 | 2.5 | B2 | `POST /api/auth/login` más de 5 veces seguidas con password mala | **429**. |
 | 2.6 | F1 | Esperar a que expire el JWT (`JWT_EXPIRES_IN`, por defecto 30 min) o forzar un 401 | La SPA limpia la sesión y vuelve al login. |
 
-Lookups de apoyo: `GET /api/authors`, `/api/publishers`, `/api/genres` con JWT → arrays `{ id, name }` ordenados por nombre. Sin JWT → 401. No hay POST de esas entidades (REQ-B1).
+Lookups de apoyo: `GET /api/authors`, `/api/publishers`, `/api/genres` con JWT → arrays `{ id, name }` ordenados por nombre. Sin JWT → 401. Autores también aceptan `POST /api/authors` `{ name }` (crea o reutiliza si el nombre ya existe). Editoriales y géneros no tienen POST.
 
 ---
 
@@ -68,12 +68,12 @@ Query params equivalentes en API: `page`, `limit`, `search`, `genreId`, `publish
 
 ---
 
-## 4. Alta, edición, detalle e imagen — REQ-F3, F3.1, F3.2, F4, B3, B3.2, D5
+## 4. Alta, edición, detalle e imagen — REQ-F3, F3.1, F3.2, F3.3, F4, B3, B3.2, D5
 
 | # | REQ | Qué hacer | Qué tiene que pasar |
 |---|-----|-----------|---------------------|
 | 4.1 | F3, F3.1 | `/books/new`: dejar título vacío o precio inválido | Error **por campo** en vivo; el submit no sale. |
-| 4.2 | F3, B3 | Completar el form (autor/editorial/género de los selects) y guardar | 201 en red; vuelve al listado o detalle; el libro aparece. El precio en JSON es **string** (`"19.99"`), no float. |
+| 4.2 | F3, F3.3, B3 | Completar el form: autor existente **o** autor nuevo (nombre), editorial y género, y guardar | 201 en red; si el autor es nuevo, antes hay `POST /api/authors`. Vuelve al listado o detalle; el libro aparece. El precio en JSON es **string** (`"19.99"`), no float. |
 | 4.3 | F3 | Abrir `/books/:id/edit` | **El mismo formulario** precargado; guardar hace PATCH, no un segundo POST. |
 | 4.4 | F3.2, B3.2, D5 | En create o edit, elegir JPEG/PNG/WebP ≤ 2 MiB | Vista previa local. Un `.txt` o un archivo enorme se rechaza **en el cliente**. En el backend, `POST /api/books/:id/image` (multipart, campo `file`) valida **magic bytes** y tamaño. |
 | 4.5 | F3.2 (reintento) | Si el libro se creó y el upload falló | La UI ofrece **reintentar solo la imagen**, sin crear otro libro. |
@@ -201,7 +201,7 @@ Otros checks: `cd backend && npm run prisma:validate`, `./scripts/smoke-compose.
 | REQ-F2.2 | Orden | §3.3 |
 | REQ-F2.4 | Debounce | §3.4 |
 | REQ-F2.3 | Paginación server | §3.1 |
-| REQ-F3 / F3.1 | Form + validación | §4.1–4.3 |
+| REQ-F3 / F3.1 / F3.3 | Form + validación + autor nuevo | §4.1–4.3 |
 | REQ-F3.2 | Imagen UI | §4.4–4.5 |
 | REQ-F4 | Detalle | §4.6 |
 | REQ-F5 | Estados UI | §3.5 |

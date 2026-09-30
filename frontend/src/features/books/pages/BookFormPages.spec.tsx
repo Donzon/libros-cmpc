@@ -28,6 +28,7 @@ vi.mock('../api/lookups.api', () => ({
   listAuthors: vi.fn(),
   listPublishers: vi.fn(),
   listGenres: vi.fn(),
+  createAuthor: vi.fn(),
 }));
 
 import {
@@ -38,6 +39,7 @@ import {
   type BookResponse,
 } from '../api/books.api';
 import {
+  createAuthor,
   listAuthors,
   listGenres,
   listPublishers,
@@ -50,6 +52,7 @@ const uploadBookImageMock = vi.mocked(uploadBookImage);
 const listAuthorsMock = vi.mocked(listAuthors);
 const listPublishersMock = vi.mocked(listPublishers);
 const listGenresMock = vi.mocked(listGenres);
+const createAuthorMock = vi.mocked(createAuthor);
 
 const AUTHOR_ID = 'a1111111-1111-4111-8111-111111111111';
 const PUBLISHER_ID = 'b1111111-1111-4111-8111-111111111111';
@@ -116,7 +119,7 @@ async function fillValidCreateForm() {
   fireEvent.change(screen.getByLabelText('Precio'), {
     target: { value: '12.50' },
   });
-  fireEvent.change(screen.getByLabelText('Autor'), {
+  fireEvent.change(screen.getByTestId('book-form-author'), {
     target: { value: AUTHOR_ID },
   });
   fireEvent.change(screen.getByLabelText('Editorial'), {
@@ -153,6 +156,10 @@ describe('Book create/edit pages (T16/T17)', () => {
       { id: PUBLISHER_ID, name: 'Planeta' },
     ]);
     listGenresMock.mockResolvedValue([{ id: GENRE_ID, name: 'Clásico' }]);
+    createAuthorMock.mockResolvedValue({
+      id: 'e1111111-1111-4111-8111-111111111111',
+      name: 'Cortázar',
+    });
   });
 
   afterEach(() => {
@@ -186,6 +193,63 @@ describe('Book create/edit pages (T16/T17)', () => {
     15_000,
   );
 
+  it('create con autor nuevo llama POST /authors y luego POST /books', async () => {
+    const newAuthorId = 'e1111111-1111-4111-8111-111111111111';
+    createAuthorMock.mockResolvedValue({
+      id: newAuthorId,
+      name: 'Cortázar',
+    });
+    createBookMock.mockResolvedValue(
+      createBookResponse({
+        authorId: newAuthorId,
+        author: { id: newAuthorId, name: 'Cortázar' },
+      }),
+    );
+
+    renderWithProviders(<BookCreatePage />, '/books/new');
+    await screen.findByTestId('book-form');
+    await screen.findByRole('option', { name: 'Cervantes' });
+
+    fireEvent.change(screen.getByLabelText('Título'), {
+      target: { value: 'Rayuela' },
+    });
+    fireEvent.change(screen.getByLabelText('Precio'), {
+      target: { value: '15.00' },
+    });
+    fireEvent.click(screen.getByTestId('author-mode-new'));
+    fireEvent.change(screen.getByLabelText('Nombre del autor'), {
+      target: { value: 'Cortázar' },
+    });
+    fireEvent.change(screen.getByLabelText('Editorial'), {
+      target: { value: PUBLISHER_ID },
+    });
+    fireEvent.change(screen.getByLabelText('Género'), {
+      target: { value: GENRE_ID },
+    });
+
+    await waitFor(() => {
+      expect(
+        (screen.getByRole('button', { name: 'Crear libro' }) as HTMLButtonElement)
+          .disabled,
+      ).toBe(false);
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Crear libro' }));
+
+    await waitFor(() => {
+      expect(createAuthorMock).toHaveBeenCalledWith('Cortázar');
+      expect(createBookMock).toHaveBeenCalledWith({
+        title: 'Rayuela',
+        price: '15.00',
+        available: true,
+        authorId: newAuthorId,
+        publisherId: PUBLISHER_ID,
+        genreId: GENRE_ID,
+      });
+    });
+
+    await screen.findByTestId('book-detail-stub');
+  });
+
   it('edit carga valores iniciales y llama PATCH /books/:id', async () => {
     getBookMock.mockResolvedValue(
       createBookResponse({ title: 'Original', price: '9.00' }),
@@ -205,7 +269,7 @@ describe('Book create/edit pages (T16/T17)', () => {
       'Original',
     );
     expect(screen.getByLabelText('Precio')).toHaveProperty('value', '9.00');
-    expect(screen.getByLabelText('Autor')).toHaveProperty(
+    expect(screen.getByTestId('book-form-author')).toHaveProperty(
       'value',
       AUTHOR_ID,
     );

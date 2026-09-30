@@ -35,6 +35,7 @@ Un **libro** tiene: título, autor, editorial, precio, disponibilidad y género 
 | REQ-F3 | Formulario de alta/edición | Un solo formulario para crear y editar. |
 | REQ-F3.1 | Validación reactiva | Errores por campo en vivo; el envío se bloquea si es inválido. |
 | REQ-F3.2 | Carga de una imagen por libro | Valida tipo y tamaño; muestra vista previa. |
+| REQ-F3.3 | Autor existente o nuevo | En alta/edición se puede elegir un autor del catálogo o registrar uno nuevo por nombre. |
 | REQ-F4 | Detalle del libro | Vista con todos los datos del libro, incluida la imagen. |
 | REQ-F5 | Estados de UI | Loading, vacío y error en listado y formularios. |
 | REQ-F6 | Error boundary global | Un error no controlado al renderizar no deja la app en blanco: se muestra una pantalla de fallback con opción de recuperarse. |

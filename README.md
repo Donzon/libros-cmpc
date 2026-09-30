@@ -227,7 +227,7 @@ Detalle (capas Nest, flujo crear+imagen, **modelo relacional** e índices): [`do
 | Fuerza bruta | `@nestjs/throttler` en `POST /auth/login` (5/min → 429) | Mitiga ataques de diccionario sin penalizar el resto del API |
 | Precio | `Decimal(10,2)` en DB, serializado como string (`"19.99"`) | Evita errores de redondeo de float en dinero |
 | Borrado | Soft delete con `deletedAt` | Conserva historial y trazabilidad con la auditoría |
-| Auditoría | Tabla `AuditLog` append-only; `AuditService.log(tx, …)` recibe el cliente transaccional. Se **consulta** por SQL/Prisma Studio, no por la SPA | La auditoría se confirma o revierte junto con la operación; no hay rol admin ni endpoint de lectura (ver `docs/pending.md` §13) |
+| Auditoría | Tabla `AuditLog` append-only; `AuditService.log(tx, …)` recibe el cliente transaccional. Se **consulta** por SQL/Prisma Studio, no por la SPA | La auditoría se confirma o revierte junto con la operación; no hay rol admin ni endpoint de lectura (ver `docs/pending.md` §12) |
 | Búsqueda | `contains` case-insensitive solo sobre `title` | Alcance acotado en la spec; `pg_trgm` queda como evolución |
 | Consulta avanzada | Un builder de `where`/`orderBy` compartido por listado y CSV | Garantiza que el CSV respete exactamente los mismos filtros |
 | Imágenes | Endpoint multipart separado, validación por magic bytes (no por `Content-Type`), nombre `<bookId>-<timestamp>.<ext>`, se borra la anterior | No confiar en el cliente; nombres no adivinables por el usuario ni colisiones |
@@ -239,7 +239,7 @@ Detalle (capas Nest, flujo crear+imagen, **modelo relacional** e índices): [`do
 | Configuración | Validación de env con Zod al arrancar | Falla rápido y explícito ante configuración inválida |
 | Seguridad HTTP | Helmet; `/uploads` de solo lectura, sin listado de directorio y con `nosniff` | Endurecimiento básico listo para producción |
 | Frontend | React Query para estado de servidor; react-hook-form + Zod para el formulario | Caché e invalidación declarativas; validación en vivo tipada |
-| Lookups | Solo `GET` de autores/editoriales/géneros; se cargan por seed | La spec no pide administrarlos; evita superficie de API innecesaria |
+| Lookups | `GET` de autores/editoriales/géneros; `POST /authors` para alta desde el formulario de libro. Editoriales y géneros se cargan por seed | El inventario necesita autores nuevos sin una pantalla de catálogo aparte; editorial/género siguen acotados |
 
 ---
 
@@ -303,4 +303,4 @@ En este modo, Prisma Studio (`cd backend && npx prisma studio`) es la forma más
 
 ## 11. Pendientes
 
-Lo que no se implementó (mejoras P2, evoluciones de los supuestos y brechas conocidas) está en [`docs/pending.md`](./docs/pending.md), con una propuesta de cómo implementarlo.
+Lo que no se implementó (mejoras P2 y evoluciones de los supuestos; no son requisitos incumplidos del PDF) está en [`docs/pending.md`](./docs/pending.md), con una propuesta de cómo implementarlo.

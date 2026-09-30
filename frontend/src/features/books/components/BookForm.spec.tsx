@@ -17,11 +17,13 @@ const authors = [{ id: AUTHOR_ID, name: 'Cervantes' }];
 const publishers = [{ id: PUBLISHER_ID, name: 'Planeta' }];
 const genres = [{ id: GENRE_ID, name: 'Clásico' }];
 
-const validValues: BookFormValues = {
+const validExistingAuthor: BookFormValues = {
   title: 'El Quijote',
   price: '19.99',
   available: true,
+  authorMode: 'existing',
   authorId: AUTHOR_ID,
+  authorName: '',
   publisherId: PUBLISHER_ID,
   genreId: GENRE_ID,
 };
@@ -86,7 +88,7 @@ describe('BookForm (T16)', () => {
     expect(screen.getByRole('option', { name: 'Clásico' })).toBeTruthy();
   });
 
-  it('envía valores válidos al completar el formulario', async () => {
+  it('envía valores válidos al completar el formulario con un autor existente', async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined);
 
     render(
@@ -100,12 +102,12 @@ describe('BookForm (T16)', () => {
     );
 
     fireEvent.change(screen.getByLabelText('Título'), {
-      target: { value: validValues.title },
+      target: { value: validExistingAuthor.title },
     });
     fireEvent.change(screen.getByLabelText('Precio'), {
-      target: { value: validValues.price },
+      target: { value: validExistingAuthor.price },
     });
-    fireEvent.change(screen.getByLabelText('Autor'), {
+    fireEvent.change(screen.getByTestId('book-form-author'), {
       target: { value: AUTHOR_ID },
     });
     fireEvent.change(screen.getByLabelText('Editorial'), {
@@ -125,7 +127,60 @@ describe('BookForm (T16)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Crear libro' }));
 
     await waitFor(() => {
-      expect(onSubmit).toHaveBeenCalledWith(validValues);
+      expect(onSubmit).toHaveBeenCalledWith(validExistingAuthor);
+    });
+  });
+
+  it('permite registrar un autor nuevo en lugar de elegir uno de la lista', async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <BookForm
+        authors={authors}
+        publishers={publishers}
+        genres={genres}
+        submitLabel="Crear libro"
+        onSubmit={onSubmit}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText('Título'), {
+      target: { value: 'Rayuela' },
+    });
+    fireEvent.change(screen.getByLabelText('Precio'), {
+      target: { value: '15.00' },
+    });
+    fireEvent.click(screen.getByTestId('author-mode-new'));
+    fireEvent.change(screen.getByLabelText('Nombre del autor'), {
+      target: { value: 'Julio Cortázar' },
+    });
+    fireEvent.change(screen.getByLabelText('Editorial'), {
+      target: { value: PUBLISHER_ID },
+    });
+    fireEvent.change(screen.getByLabelText('Género'), {
+      target: { value: GENRE_ID },
+    });
+
+    await waitFor(() => {
+      expect(
+        (screen.getByRole('button', { name: 'Crear libro' }) as HTMLButtonElement)
+          .disabled,
+      ).toBe(false);
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Crear libro' }));
+
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledWith({
+        title: 'Rayuela',
+        price: '15.00',
+        available: true,
+        authorMode: 'new',
+        authorId: '',
+        authorName: 'Julio Cortázar',
+        publisherId: PUBLISHER_ID,
+        genreId: GENRE_ID,
+      });
     });
   });
 });

@@ -82,6 +82,9 @@ describe('Swagger /api/docs (smoke)', () => {
         '/api/publishers',
       ].sort(),
     );
+    expect(Object.keys(doc.paths['/api/authors'])).toEqual(
+      expect.arrayContaining(['get', 'post']),
+    );
     expect(Object.keys(doc.paths['/api/books'])).toEqual(
       expect.arrayContaining(['get', 'post']),
     );

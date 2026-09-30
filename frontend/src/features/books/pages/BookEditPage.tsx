@@ -14,13 +14,16 @@ import {
 import { useBookQuery } from '../hooks/useBookQuery';
 import {
   useAuthorsQuery,
+  useCreateAuthorMutation,
   useGenresQuery,
   usePublishersQuery,
 } from '../hooks/useLookupsQueries';
 import {
   EMPTY_BOOK_FORM_VALUES,
+  toBookWritePayload,
   type BookFormValues,
 } from '../schemas/book.schema';
+import { resolveBookAuthorId } from '../utils/resolve-book-author';
 
 function uploadErrorMessage(err: unknown): string {
   if (err instanceof HttpError) {
@@ -33,6 +36,7 @@ export function BookEditPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const updateMutation = useUpdateBookMutation();
+  const createAuthorMutation = useCreateAuthorMutation();
   const uploadMutation = useUploadBookImageMutation();
   const [formError, setFormError] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -84,7 +88,13 @@ export function BookEditPage() {
     setFormError(null);
     setUploadError(null);
     try {
-      await updateMutation.mutateAsync({ id, payload: values });
+      const authorId = await resolveBookAuthorId(values, (name) =>
+        createAuthorMutation.mutateAsync(name),
+      );
+      await updateMutation.mutateAsync({
+        id,
+        payload: toBookWritePayload(values, authorId),
+      });
       if (!selectedFile) {
         void navigate(`/books/${id}`);
         return;
@@ -118,7 +128,9 @@ export function BookEditPage() {
         title: bookQuery.data.title,
         price: bookQuery.data.price,
         available: bookQuery.data.available,
+        authorMode: 'existing',
         authorId: bookQuery.data.authorId,
+        authorName: '',
         publisherId: bookQuery.data.publisherId,
         genreId: bookQuery.data.genreId,
       }
