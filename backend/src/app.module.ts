@@ -5,6 +5,9 @@ import { PrismaModule } from './modules/prisma/prisma.module';
 import { HealthModule } from './modules/health/health.module';
 import { UsersModule } from './modules/users/users.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { AuthorsModule } from './modules/authors/authors.module';
+import { PublishersModule } from './modules/publishers/publishers.module';
+import { GenresModule } from './modules/genres/genres.module';
 import { JwtAuthGuard } from './modules/auth/jwt-auth.guard';
 
 @Module({
@@ -14,6 +17,9 @@ import { JwtAuthGuard } from './modules/auth/jwt-auth.guard';
     HealthModule,
     UsersModule,
     AuthModule,
+    AuthorsModule,
+    PublishersModule,
+    GenresModule,
   ],
   providers: [
     {

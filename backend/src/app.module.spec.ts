@@ -20,7 +20,7 @@ describe('AppModule', () => {
     process.env = originalEnv;
   });
 
-  it('compila el módulo raíz con config, prisma, health y auth', async () => {
+  it('compila el módulo raíz con config, prisma, health, auth y lookups', async () => {
     const { AppModule } = await import('./app.module');
 
     const moduleRef = await Test.createTestingModule({
@@ -33,6 +33,9 @@ describe('AppModule', () => {
         $queryRaw: jest.fn(),
         onModuleInit: jest.fn(),
         onModuleDestroy: jest.fn(),
+        author: { findMany: jest.fn() },
+        publisher: { findMany: jest.fn() },
+        genre: { findMany: jest.fn() },
       })
       .compile();
 
