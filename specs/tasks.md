@@ -37,6 +37,7 @@ Plan de implementación a partir de [`requirements.md`](./requirements.md) y [`d
 | [T17](#t17--detalle-upload-de-imagen-con-reintento) | P1 | Detalle + upload de imagen con reintento |
 | [T18](#t18--cobertura--80--y-reportes) | P0 | Cobertura ≥ 80 % y reportes |
 | [T19](#t19--documentación-readme-swagger-diagramas-pending) | P0/P1 | Documentación: README, Swagger, diagramas, pending |
+| [T20](#t20--logginginterceptor-global-y-error-boundary-de-react) | P1 | LoggingInterceptor global y Error Boundary de React |
 
 ---
 
@@ -443,6 +444,30 @@ Plan de implementación a partir de [`requirements.md`](./requirements.md) y [`d
   3. Diagramas de arquitectura y modelo relacional publicados.
   4. `docs/pending.md` lista pendientes con “cómo se implementaría”.
   5. Supuestos A1–A6 documentados.
+
+---
+
+## T20 — LoggingInterceptor global y Error Boundary de React
+
+- **Prioridad:** P1
+- **REQ:** REQ-B9, REQ-F6
+- **Depende de:** T2 (filtro global y bootstrap), T5 (`request.user` del guard), T12 (`App` y providers del frontend)
+- **Archivos principales:**
+  - `backend/src/common/interceptors/logging.interceptor.ts`
+  - `backend/src/main.ts` (`app.useGlobalInterceptors`)
+  - `frontend/src/shared/ui/ErrorBoundary.tsx`
+  - `frontend/src/app/App.tsx` (envuelve el router)
+- **Incluye tests:**
+  - Unit: el interceptor loguea método, ruta, status y latencia en una respuesta exitosa.
+  - Unit: el interceptor loguea el error y **re-lanza** la excepción sin transformarla (el filtro global sigue formateando).
+  - Unit: el interceptor incluye el `userId` cuando `request.user` existe y lo omite cuando no.
+  - Unit: el `ErrorBoundary` renderiza los hijos cuando no hay error.
+  - Unit: ante un hijo que lanza, muestra el fallback; el botón de reintento vuelve a renderizar los hijos.
+- **Criterio de terminado:**
+  1. El interceptor está registrado globalmente y no altera el body de ninguna respuesta (el contrato de Swagger no cambia).
+  2. Los errores siguen respondiendo con el formato del `HttpExceptionFilter`.
+  3. El `ErrorBoundary` envuelve el router; un throw en render muestra fallback, no pantalla en blanco.
+  4. Tests de esta tarea en verde y cobertura global sigue ≥ 80 % (REQ-T3).
 
 ---
 

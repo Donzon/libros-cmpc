@@ -37,6 +37,7 @@ Un **libro** tiene: título, autor, editorial, precio, disponibilidad y género 
 | REQ-F3.2 | Carga de una imagen por libro | Valida tipo y tamaño; muestra vista previa. |
 | REQ-F4 | Detalle del libro | Vista con todos los datos del libro, incluida la imagen. |
 | REQ-F5 | Estados de UI | Loading, vacío y error en listado y formularios. |
+| REQ-F6 | Error boundary global | Un error no controlado al renderizar no deja la app en blanco: se muestra una pantalla de fallback con opción de recuperarse. |
 
 ## 3. Backend (NestJS + TypeScript)
 
@@ -52,6 +53,7 @@ Un **libro** tiene: título, autor, editorial, precio, disponibilidad y género 
 | REQ-B6 | Logging de auditoría | Registra quién, qué operación, sobre qué entidad y cuándo, para crear, editar, eliminar y exportar. |
 | REQ-B7 | Manejo de errores | Filtro global de excepciones y formato de error consistente. |
 | REQ-B8 | Configuración | Variables de entorno validadas al arrancar; sin secretos en el código. |
+| REQ-B9 | Interceptor global | Interceptor de NestJS en el pipeline de respuestas: registra método, ruta, status y latencia de cada request, y correlaciona el log con el usuario autenticado cuando existe. No altera el contrato de los endpoints. |
 
 ## 4. Base de datos (PostgreSQL + Prisma)
 
@@ -102,7 +104,7 @@ Un **libro** tiene: título, autor, editorial, precio, disponibilidad y género 
 ## 9. Prioridades
 
 - **P0 (núcleo):** REQ-B2, B3, DB1, DB2, F1, F2, F3, T3, O1, O4, DOC1.
-- **P1:** REQ-B4, B5, B6, DB4, F2.4, F3.2, DOC2 a DOC4.
+- **P1:** REQ-B4, B5, B6, B9, DB4, F2.4, F3.2, F6, DOC2 a DOC4.
 - **P2 (si sobra tiempo o solo documentar):** refresh token, dashboard, CI/CD, caché.
 
 ## 10. Fuera de alcance

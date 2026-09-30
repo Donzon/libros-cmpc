@@ -331,6 +331,9 @@ La justificación detallada está en [`specs/design.md` §4](./specs/design.md#4
 | Imágenes | Endpoint multipart separado, validación por magic bytes (no por `Content-Type`), nombre `<bookId>-<timestamp>.<ext>`, se borra la anterior | No confiar en el cliente; nombres no adivinables por el usuario ni colisiones |
 | Crear + imagen | Dos requests (JSON y multipart) con reintento solo del upload | Un fallo de red en la imagen no duplica libros |
 | Errores | Filtro global con formato `{ statusCode, message, error, timestamp, path }` | Contrato uniforme para el frontend |
+| Observabilidad | `LoggingInterceptor` global: método, ruta, status, latencia y `userId` por request; re-lanza la excepción sin tocarla | Trazabilidad en producción sin duplicar el formateo de errores del filtro |
+| Contrato de respuestas | El interceptor **no** envuelve el payload en `{ data, meta }` | El listado ya devuelve su propio `{ data, meta }`: un envelope global lo anidaría dos veces (`data.data`) y además rompería el `text/csv` del export |
+| Errores de render | `ErrorBoundary` de React envolviendo el router | React Query cubre los errores de red, pero un throw en render dejaría la SPA en blanco |
 | Configuración | Validación de env con Zod al arrancar | Falla rápido y explícito ante configuración inválida |
 | Seguridad HTTP | Helmet; `/uploads` de solo lectura, sin listado de directorio y con `nosniff` | Endurecimiento básico listo para producción |
 | Frontend | React Query para estado de servidor; react-hook-form + Zod para el formulario | Caché e invalidación declarativas; validación en vivo tipada |

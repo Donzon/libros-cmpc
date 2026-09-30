@@ -5,6 +5,7 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { configureStaticUploads } from './common/static-uploads';
 import { configureSwagger } from './common/swagger';
 import { EnvConfig } from './modules/config/env.schema';
@@ -26,6 +27,7 @@ async function bootstrap(): Promise<void> {
     }),
   );
   app.useGlobalFilters(new HttpExceptionFilter());
+  app.useGlobalInterceptors(new LoggingInterceptor());
 
   configureStaticUploads(
     app,

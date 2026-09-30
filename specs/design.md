@@ -125,6 +125,7 @@ flowchart TB
 | Auditoría | Tabla `AuditLog` append-only en la misma `$transaction` | REQ-B6, REQ-DB4 |
 | CSV | Mismos filtros que el listado; excluye soft-deleted | REQ-B4, A5 |
 | Lookups | GET de autores/editoriales/géneros para selects | Formularios F3 |
+| Interceptor de respuestas | `LoggingInterceptor` global de observabilidad; **sin** envelope global | REQ-B9; el listado ya trae su `{ data, meta }` y el CSV de REQ-B4 no es JSON |
 
 ---
 
@@ -151,6 +152,11 @@ Arquitectura modular por dominio (REQ-B1). Cada módulo exporta solo lo necesari
 - **ValidationPipe** global (`whitelist`, `forbidNonWhitelisted`, `transform`).
 - **Transacciones** (`prisma.$transaction`) en create/update/delete de libro + auditoría, y en export (solo lectura + log de auditoría).
 - **Swagger**: decoradores en controllers; documento OpenAPI en `/api/docs` (REQ-DOC2).
+- **Interceptor global** `LoggingInterceptor` (REQ-B9), registrado en `main.ts` junto al `ValidationPipe` y al filtro de excepciones:
+  - Envuelve el stream de respuesta con `tap` / `catchError` de RxJS y mide la latencia con `Date.now()` alrededor de `next.handle()`.
+  - Emite una línea por request: `METHOD /ruta status +Xms` más el `userId` si `request.user` existe (lo puebla el `JwtAuthGuard`).
+  - En error deja registro con el status resuelto por el `HttpExceptionFilter` y **re-lanza** la excepción: el filtro sigue siendo el único que formatea la respuesta.
+  - No transforma el payload: el contrato de cada endpoint es el del DTO documentado en Swagger. Un envelope `{ data, meta }` queda descartado (ver §1.4) porque el listado ya devuelve su propio `{ data, meta: { page, limit, total, totalPages } }` — envolverlo otra vez daría `data.data` — y el export CSV responde `text/csv`.
 
 ### 2.2 Frontend (alcance de diseño)
 
@@ -162,6 +168,7 @@ Stack de datos y formularios:
 - 401 → limpia token y redirige a login (REQ-F1).
 - Listado: query params espejo del backend; debounce ~300 ms en `search` (solo título) (REQ-F2.4).
 - Estados loading / empty / error (REQ-F5).
+- **`ErrorBoundary`** (class component, `getDerivedStateFromError` + `componentDidCatch`) envolviendo el router dentro de `App` (REQ-F6). Cubre el hueco que React Query no cubre: errores de red ya se manejan por query/mutation, pero un throw durante el render deja pantalla en blanco. El fallback muestra un mensaje y un botón que resetea el estado del boundary para reintentar el render.
 
 #### Flujo crear libro → subir imagen (con reintento)
 
