@@ -5,6 +5,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { BooksService } from './books.service';
 import { CreateBookDto } from './dto/create-book.dto';
 import { UpdateBookDto } from './dto/update-book.dto';
+import { FileStorageService } from './file-storage.service';
+import { ValidatedImageFile } from './pipes/image-file-validation.pipe';
 
 describe('BooksService', () => {
   let service: BooksService;
@@ -13,6 +15,9 @@ describe('BooksService', () => {
   let findMany: jest.Mock;
   let update: jest.Mock;
   let count: jest.Mock;
+  let buildRelativePath: jest.Mock;
+  let write: jest.Mock;
+  let deleteIfExists: jest.Mock;
 
   const author = {
     id: 'a1111111-1111-4111-8111-111111111111',
@@ -55,6 +60,9 @@ describe('BooksService', () => {
     findMany = jest.fn();
     update = jest.fn();
     count = jest.fn();
+    buildRelativePath = jest.fn();
+    write = jest.fn();
+    deleteIfExists = jest.fn();
 
     const moduleRef: TestingModule = await Test.createTestingModule({
       providers: [
@@ -64,6 +72,10 @@ describe('BooksService', () => {
           useValue: {
             book: { create, findFirst, findMany, update, count },
           },
+        },
+        {
+          provide: FileStorageService,
+          useValue: { buildRelativePath, write, deleteIfExists },
         },
       ],
     }).compile();
@@ -314,6 +326,84 @@ describe('BooksService', () => {
       await expect(service.findOne(bookId)).rejects.toBeInstanceOf(
         NotFoundException,
       );
+    });
+  });
+
+  describe('uploadImage', () => {
+    const file: ValidatedImageFile = {
+      buffer: Buffer.from([0xff, 0xd8, 0xff, 0xe0]),
+      extension: 'jpg',
+      kind: 'jpeg',
+      size: 4,
+    };
+
+    it('guarda como books/<bookId>-<timestamp>.<ext> y actualiza imagePath', async () => {
+      const relativePath = `books/${bookId}-1710000000000.jpg`;
+      findFirst.mockResolvedValue(buildBook());
+      buildRelativePath.mockReturnValue(relativePath);
+      write.mockResolvedValue(undefined);
+      deleteIfExists.mockResolvedValue(undefined);
+      update.mockResolvedValue(buildBook({ imagePath: relativePath }));
+
+      const result = await service.uploadImage(bookId, file);
+
+      expect(buildRelativePath).toHaveBeenCalledWith(bookId, 'jpg');
+      expect(write).toHaveBeenCalledWith(relativePath, file.buffer);
+      expect(update).toHaveBeenCalledWith({
+        where: { id: bookId },
+        data: { imagePath: relativePath },
+        include: {
+          author: { select: { id: true, name: true } },
+          publisher: { select: { id: true, name: true } },
+          genre: { select: { id: true, name: true } },
+        },
+      });
+      expect(deleteIfExists).toHaveBeenCalledWith(null);
+      expect(result.imagePath).toBe(relativePath);
+      expect(result.imageUrl).toBe(`/uploads/${relativePath}`);
+    });
+
+    it('segundo upload borra el archivo anterior', async () => {
+      const previous = `books/${bookId}-1000.jpg`;
+      const next = `books/${bookId}-2000.webp`;
+      findFirst.mockResolvedValue(buildBook({ imagePath: previous }));
+      buildRelativePath.mockReturnValue(next);
+      write.mockResolvedValue(undefined);
+      deleteIfExists.mockResolvedValue(undefined);
+      update.mockResolvedValue(buildBook({ imagePath: next }));
+
+      const webpFile: ValidatedImageFile = {
+        ...file,
+        extension: 'webp',
+        kind: 'webp',
+      };
+      await service.uploadImage(bookId, webpFile);
+
+      expect(deleteIfExists).toHaveBeenCalledWith(previous);
+    });
+
+    it('lanza NotFoundException si el libro está soft-deleted', async () => {
+      findFirst.mockResolvedValue(null);
+
+      await expect(service.uploadImage(bookId, file)).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+      expect(write).not.toHaveBeenCalled();
+      expect(update).not.toHaveBeenCalled();
+    });
+
+    it('borra el archivo nuevo si falla la actualización en DB', async () => {
+      const relativePath = `books/${bookId}-1710000000000.jpg`;
+      findFirst.mockResolvedValue(buildBook());
+      buildRelativePath.mockReturnValue(relativePath);
+      write.mockResolvedValue(undefined);
+      deleteIfExists.mockResolvedValue(undefined);
+      update.mockRejectedValue(new Error('db down'));
+
+      await expect(service.uploadImage(bookId, file)).rejects.toThrow(
+        'db down',
+      );
+      expect(deleteIfExists).toHaveBeenCalledWith(relativePath);
     });
   });
 });

@@ -1,13 +1,15 @@
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { configureStaticUploads } from './common/static-uploads';
 import { EnvConfig } from './modules/config/env.schema';
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const config = app.get(ConfigService<EnvConfig, true>);
 
   app.use(helmet());
@@ -23,6 +25,11 @@ async function bootstrap(): Promise<void> {
     }),
   );
   app.useGlobalFilters(new HttpExceptionFilter());
+
+  configureStaticUploads(
+    app,
+    config.get('UPLOAD_DIR', { infer: true }),
+  );
 
   const port = config.get('PORT', { infer: true });
   await app.listen(port);

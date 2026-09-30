@@ -8,11 +8,13 @@ import {
 import { CreateBookDto } from './dto/create-book.dto';
 import { ListBooksQueryDto } from './dto/list-books-query.dto';
 import { UpdateBookDto } from './dto/update-book.dto';
+import { FileStorageService } from './file-storage.service';
 import {
   BookResponse,
   BookWithRelations,
   toBookResponse,
 } from './mappers/book.mapper';
+import { ValidatedImageFile } from './pipes/image-file-validation.pipe';
 
 export type BooksListResponse = {
   data: BookResponse[];
@@ -32,7 +34,10 @@ const bookInclude = {
 
 @Injectable()
 export class BooksService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly fileStorage: FileStorageService,
+  ) {}
 
   async create(dto: CreateBookDto): Promise<BookResponse> {
     const book = await this.prisma.book.create({
@@ -108,6 +113,35 @@ export class BooksService {
       where: { id },
       data: { deletedAt: new Date() },
     });
+  }
+
+  async uploadImage(
+    id: string,
+    file: ValidatedImageFile,
+  ): Promise<BookResponse> {
+    const book = await this.findActiveOrThrow(id);
+    const previousPath = book.imagePath;
+    const relativePath = this.fileStorage.buildRelativePath(
+      id,
+      file.extension,
+    );
+
+    await this.fileStorage.write(relativePath, file.buffer);
+
+    try {
+      const updated = await this.prisma.book.update({
+        where: { id },
+        data: { imagePath: relativePath },
+        include: bookInclude,
+      });
+
+      await this.fileStorage.deleteIfExists(previousPath);
+
+      return toBookResponse(updated as BookWithRelations);
+    } catch (error) {
+      await this.fileStorage.deleteIfExists(relativePath);
+      throw error;
+    }
   }
 
   private async findActiveOrThrow(id: string): Promise<BookWithRelations> {

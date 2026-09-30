@@ -1,10 +1,12 @@
 import { Module } from '@nestjs/common';
 import { BooksController } from './books.controller';
 import { BooksService } from './books.service';
+import { FileStorageService } from './file-storage.service';
+import { ImageFileValidationPipe } from './pipes/image-file-validation.pipe';
 
 @Module({
   controllers: [BooksController],
-  providers: [BooksService],
-  exports: [BooksService],
+  providers: [BooksService, FileStorageService, ImageFileValidationPipe],
+  exports: [BooksService, FileStorageService],
 })
 export class BooksModule {}
