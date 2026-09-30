@@ -9,9 +9,11 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 import { BooksService, BooksListResponse } from './books.service';
 import { CreateBookDto } from './dto/create-book.dto';
+import { ListBooksQueryDto } from './dto/list-books-query.dto';
 import { UpdateBookDto } from './dto/update-book.dto';
 import { BookResponse } from './mappers/book.mapper';
 
@@ -26,8 +28,8 @@ export class BooksController {
   }
 
   @Get()
-  findAll(): Promise<BooksListResponse> {
-    return this.booksService.findAll();
+  findAll(@Query() query: ListBooksQueryDto): Promise<BooksListResponse> {
+    return this.booksService.findAll(query);
   }
 
   @Get(':id')

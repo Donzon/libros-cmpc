@@ -1,7 +1,12 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import {
+  buildBooksOrderBy,
+  buildBooksWhere,
+} from './books-query.builder';
 import { CreateBookDto } from './dto/create-book.dto';
+import { ListBooksQueryDto } from './dto/list-books-query.dto';
 import { UpdateBookDto } from './dto/update-book.dto';
 import {
   BookResponse,
@@ -45,21 +50,24 @@ export class BooksService {
     return toBookResponse(book as BookWithRelations);
   }
 
-  async findAll(): Promise<BooksListResponse> {
-    const where: Prisma.BookWhereInput = { deletedAt: null };
+  async findAll(query: ListBooksQueryDto): Promise<BooksListResponse> {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+    const where = buildBooksWhere(query);
+    const orderBy = buildBooksOrderBy(query);
 
     const [books, total] = await Promise.all([
       this.prisma.book.findMany({
         where,
         include: bookInclude,
-        orderBy: { title: 'asc' },
+        orderBy,
+        skip: (page - 1) * limit,
+        take: limit,
       }),
       this.prisma.book.count({ where }),
     ]);
 
-    const page = 1;
-    const limit = total === 0 ? 20 : total;
-    const totalPages = total === 0 ? 0 : 1;
+    const totalPages = total === 0 ? 0 : Math.ceil(total / limit);
 
     return {
       data: (books as BookWithRelations[]).map(toBookResponse),

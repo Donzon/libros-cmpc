@@ -324,7 +324,7 @@ describe('Books HTTP (CRUD + soft delete)', () => {
       .expect(404);
   });
 
-  it('GET /api/books excluye soft-deleted', async () => {
+  it('GET /api/books excluye soft-deleted y usa meta con defaults', async () => {
     store = {
       id: bookId,
       title: createPayload.title,
@@ -345,6 +345,65 @@ describe('Books HTTP (CRUD + soft delete)', () => {
       .expect(200);
 
     expect(response.body.data).toEqual([]);
-    expect(response.body.meta.total).toBe(0);
+    expect(response.body.meta).toEqual({
+      page: 1,
+      limit: 20,
+      total: 0,
+      totalPages: 0,
+    });
+  });
+
+  it('GET /api/books acepta query params de listado avanzado', async () => {
+    store = {
+      id: bookId,
+      title: createPayload.title,
+      price: new Prisma.Decimal(createPayload.price),
+      available: true,
+      imagePath: null,
+      authorId: author.id,
+      publisherId: publisher.id,
+      genreId: genre.id,
+      deletedAt: null,
+      createdAt: new Date('2026-01-01T00:00:00.000Z'),
+      updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+    };
+
+    const response = await request(app.getHttpServer() as App)
+      .get('/api/books')
+      .query({
+        page: 1,
+        limit: 10,
+        search: 'casa',
+        genreId: genre.id,
+        publisherId: publisher.id,
+        authorId: author.id,
+        available: true,
+        sortBy: 'price',
+        sortOrder: 'desc',
+      })
+      .set(auth())
+      .expect(200);
+
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          deletedAt: null,
+          genreId: genre.id,
+          publisherId: publisher.id,
+          authorId: author.id,
+          available: true,
+          title: { contains: 'casa', mode: 'insensitive' },
+        },
+        orderBy: { price: 'desc' },
+        skip: 0,
+        take: 10,
+      }),
+    );
+    expect(response.body.meta).toEqual({
+      page: 1,
+      limit: 10,
+      total: 1,
+      totalPages: 1,
+    });
   });
 });

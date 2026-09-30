@@ -138,12 +138,17 @@ describe('BooksService', () => {
   });
 
   describe('findAll', () => {
-    it('lista solo no eliminados y excluye soft-deleted vía where', async () => {
+    it('lista solo no eliminados con defaults page=1 limit=20', async () => {
       const books = [buildBook()];
       findMany.mockResolvedValue(books);
       count.mockResolvedValue(1);
 
-      const result = await service.findAll();
+      const result = await service.findAll({
+        page: 1,
+        limit: 20,
+        sortBy: 'title',
+        sortOrder: 'asc',
+      });
 
       expect(findMany).toHaveBeenCalledWith({
         where: { deletedAt: null },
@@ -153,15 +158,97 @@ describe('BooksService', () => {
           genre: { select: { id: true, name: true } },
         },
         orderBy: { title: 'asc' },
+        skip: 0,
+        take: 20,
       });
       expect(count).toHaveBeenCalledWith({ where: { deletedAt: null } });
       expect(result.data).toHaveLength(1);
       expect(result.data[0].price).toBe('19.99');
       expect(result.meta).toEqual({
         page: 1,
-        limit: 1,
+        limit: 20,
         total: 1,
         totalPages: 1,
+      });
+    });
+
+    it('aplica paginación skip/take y calcula totalPages', async () => {
+      findMany.mockResolvedValue([buildBook()]);
+      count.mockResolvedValue(45);
+
+      const result = await service.findAll({
+        page: 2,
+        limit: 20,
+        sortBy: 'title',
+        sortOrder: 'asc',
+      });
+
+      expect(findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          skip: 20,
+          take: 20,
+        }),
+      );
+      expect(result.meta).toEqual({
+        page: 2,
+        limit: 20,
+        total: 45,
+        totalPages: 3,
+      });
+    });
+
+    it('totalPages es 0 cuando no hay resultados', async () => {
+      findMany.mockResolvedValue([]);
+      count.mockResolvedValue(0);
+
+      const result = await service.findAll({
+        page: 1,
+        limit: 20,
+        sortBy: 'title',
+        sortOrder: 'asc',
+      });
+
+      expect(result.meta).toEqual({
+        page: 1,
+        limit: 20,
+        total: 0,
+        totalPages: 0,
+      });
+    });
+
+    it('pasa filtros y search al where vía builder', async () => {
+      findMany.mockResolvedValue([]);
+      count.mockResolvedValue(0);
+
+      await service.findAll({
+        page: 1,
+        limit: 10,
+        search: 'casa',
+        genreId: genre.id,
+        publisherId: publisher.id,
+        authorId: author.id,
+        available: false,
+        sortBy: 'price',
+        sortOrder: 'desc',
+      });
+
+      expect(findMany).toHaveBeenCalledWith({
+        where: {
+          deletedAt: null,
+          genreId: genre.id,
+          publisherId: publisher.id,
+          authorId: author.id,
+          available: false,
+          title: { contains: 'casa', mode: 'insensitive' },
+        },
+        include: {
+          author: { select: { id: true, name: true } },
+          publisher: { select: { id: true, name: true } },
+          genre: { select: { id: true, name: true } },
+        },
+        orderBy: { price: 'desc' },
+        skip: 0,
+        take: 10,
       });
     });
   });
