@@ -6,12 +6,3 @@ export function HomePage() {
     </main>
   );
 }
-
-export function BooksPlaceholderPage() {
-  return (
-    <main>
-      <h1>Libros</h1>
-      <p>Placeholder — listado en T14</p>
-    </main>
-  );
-}
