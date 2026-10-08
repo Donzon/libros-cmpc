@@ -1,4 +1,5 @@
 import { HttpError, getApiBaseUrl } from '../../../shared/api/http-client';
+import { unwrapApiResponse } from '../../../shared/api/unwrap-response';
 
 export type LoginCredentials = {
   email: string;
@@ -59,5 +60,6 @@ export async function loginRequest(
     throw new HttpError(response.status, message);
   }
 
-  return (await response.json()) as LoginResponse;
+  const body: unknown = await response.json();
+  return unwrapApiResponse<LoginResponse>(body);
 }

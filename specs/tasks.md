@@ -39,6 +39,7 @@ Plan de implementación a partir de [`requirements.md`](./requirements.md) y [`d
 | [T19](#t19--documentación-readme-swagger-diagramas-pending) | P0/P1 | Documentación: README, Swagger, diagramas, pending |
 | [T20](#t20--logginginterceptor-global-y-error-boundary-de-react) | P1 | LoggingInterceptor global y Error Boundary de React |
 | [T21](#t21--estilo-visual-tailwind-shadcnui-y-paleta-cmpc) | P2 | Estilo visual: Tailwind, shadcn/ui y paleta CMPC |
+| [T22](#t22--transforminterceptor-envelope-json) | P1 | TransformInterceptor: envelope JSON de respuestas exitosas |
 
 ---
 
@@ -463,7 +464,7 @@ Plan de implementación a partir de [`requirements.md`](./requirements.md) y [`d
 - **Depende de:** T2 (filtro global y bootstrap), T5 (`request.user` del guard), T12 (`App` y providers del frontend)
 - **Archivos principales:**
   - `backend/src/common/interceptors/logging.interceptor.ts`
-  - `backend/src/main.ts` (`app.useGlobalInterceptors`)
+  - `backend/src/app.module.ts` (`APP_INTERCEPTOR`; T22 registra también `TransformInterceptor`)
   - `frontend/src/shared/ui/ErrorBoundary.tsx`
   - `frontend/src/app/App.tsx` (envuelve el router)
 - **Incluye tests:**
@@ -503,6 +504,35 @@ Plan de implementación a partir de [`requirements.md`](./requirements.md) y [`d
   5. Estados loading / vacío / error con estilo; layout responsive básico.
   6. Sin cambios de lógica ni de llamadas a la API.
   7. Tests de esta tarea y los existentes en verde.
+
+---
+
+## T22 — TransformInterceptor: envelope JSON de respuestas exitosas
+
+- **Prioridad:** P1
+- **REQ:** REQ-B9 (transformación de respuestas; T20 cubre el logging)
+- **Depende de:** T2 (filtro global y bootstrap), T8 (listado `{ data, meta }`), T11 (CSV), T12 (cliente HTTP)
+- **Archivos principales:**
+  - `backend/src/common/interceptors/transform.interceptor.ts`
+  - `backend/src/common/decorators/skip-transform.decorator.ts`
+  - `backend/src/app.module.ts` (`APP_INTERCEPTOR`)
+  - `backend/src/modules/books/books.controller.ts` (`@SkipTransform` en export CSV)
+  - `frontend/src/shared/api/unwrap-response.ts`
+  - `frontend/src/shared/api/http-client.ts`
+  - `frontend/src/features/auth/api/auth.api.ts`
+- **Incluye tests:**
+  - Unit: envuelve un objeto en `{ success, data, statusCode, timestamp, path }`.
+  - Unit: un payload `{ data, meta }` queda aplanado (sin `data.data`).
+  - Unit: string / 204 / `@SkipTransform` / rutas `/docs` no se envuelven.
+  - HTTP: el status HTTP se refleja en `statusCode` del envelope (p. ej. 201).
+  - HTTP: un 404 sigue el formato del `HttpExceptionFilter`, sin `success: true`.
+  - Unit frontend: el cliente desenvuelve envelope simple y paginado; un body sin envelope pasa igual (compatibilidad de tests).
+- **Criterio de terminado:**
+  1. Las respuestas JSON de éxito de la API van en el envelope; el listado no anida `data.data`.
+  2. CSV, 204 y Swagger no se convierten a JSON envelope.
+  3. Los errores siguen el filtro global.
+  4. La SPA consume el envelope (login y cliente HTTP) y los flujos existentes siguen funcionando.
+  5. Tests de esta tarea en verde y cobertura global sigue ≥ 80 % (REQ-T3).
 
 ---
 

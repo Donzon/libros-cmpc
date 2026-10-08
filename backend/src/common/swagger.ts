@@ -13,7 +13,10 @@ export function buildSwaggerDocument(app: INestApplication): OpenAPIObject {
     .setDescription(
       'API REST del inventario de libros. Todas las rutas requieren ' +
         '`Authorization: Bearer <accessToken>` salvo `POST /api/auth/login` ' +
-        'y `GET /api/health`.',
+        'y `GET /api/health`. Las respuestas JSON de éxito se envuelven en ' +
+        '`{ success, data, statusCode, timestamp, path }` (`meta` al mismo ' +
+        'nivel en listados paginados). Los errores siguen `{ statusCode, message, error, timestamp, path }`. ' +
+        'El export CSV no se envuelve.',
     )
     .setVersion('1.0')
     .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' })

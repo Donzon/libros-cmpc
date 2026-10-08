@@ -38,7 +38,7 @@ flowchart TB
     Pipes["ValidationPipe global<br/>ImageFileValidationPipe"]
     Controllers["Controllers delgados<br/>+ decoradores Swagger"]
     Filter["HttpExceptionFilter global"]
-    Logs["LoggingInterceptor global"]
+    Logs["LoggingInterceptor + TransformInterceptor"]
   end
   subgraph app [Capa de aplicación]
     Services["Services por dominio<br/>Books, Auth, Users, Lookups"]
@@ -67,8 +67,8 @@ flowchart TB
 - **Módulos por dominio** (`backend/src/modules/`): `config`, `prisma`, `health`, `auth`, `users`, `authors`, `publishers`, `genres`, `books`, `audit`.
 - **Controllers** solo mapean HTTP ↔ DTO; la lógica y las transacciones viven en los services.
 - **Transacciones**: create/update/delete de libro, cambio de imagen y export escriben el `AuditLog` en la misma `prisma.$transaction`; si la auditoría falla, la mutación hace rollback.
-- **Observabilidad HTTP**: `LoggingInterceptor` (REQ-B9) registra método, ruta, status, latencia y `userId`. No altera el body. Cómo verlo: [`auditoria-y-observabilidad.md`](./auditoria-y-observabilidad.md).
-- **Frontend** (`frontend/src/`): `app/` (router y providers), `features/auth` y `features/books`, `shared/` (cliente HTTP con Bearer y 401, estados de UI, hooks).
+- **Observabilidad y contrato HTTP** (REQ-B9): `LoggingInterceptor` registra método, ruta, status, latencia y `userId`. `TransformInterceptor` envuelve JSON de éxito en `{ success, data, statusCode, timestamp, path }` (con `meta` aplanado en listados). CSV, 204 y Swagger se omiten. Cómo verlo: [`auditoria-y-observabilidad.md`](./auditoria-y-observabilidad.md).
+- **Frontend** (`frontend/src/`): `app/` (router y providers), `features/auth` y `features/books`, `shared/` (cliente HTTP con Bearer, unwrap del envelope y 401, estados de UI, hooks).
 
 ---
 

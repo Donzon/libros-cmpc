@@ -54,7 +54,7 @@ Un **libro** tiene: título, autor, editorial, precio, disponibilidad y género 
 | REQ-B6 | Logging de auditoría | Registra quién, qué operación, sobre qué entidad y cuándo, para crear, editar, eliminar y exportar. |
 | REQ-B7 | Manejo de errores | Filtro global de excepciones y formato de error consistente. |
 | REQ-B8 | Configuración | Variables de entorno validadas al arrancar; sin secretos en el código. |
-| REQ-B9 | Interceptor global | Interceptor de NestJS en el pipeline de respuestas: registra método, ruta, status y latencia de cada request, y correlaciona el log con el usuario autenticado cuando existe. No altera el contrato de los endpoints. |
+| REQ-B9 | Interceptores globales | Dos interceptores de NestJS en el pipeline de respuestas: (1) `LoggingInterceptor` registra método, ruta, status, latencia y `userId` cuando hay JWT; (2) `TransformInterceptor` envuelve las respuestas JSON exitosas en `{ success, data, statusCode, timestamp, path }` y, si el payload ya venía paginado, expone `meta` en el mismo nivel (sin `data.data`). No envuelve CSV, 204 ni el documento Swagger. Los errores siguen el filtro global (REQ-B7). |
 
 ## 4. Base de datos (PostgreSQL + Prisma)
 

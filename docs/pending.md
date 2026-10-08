@@ -110,7 +110,7 @@ Fuera de alcance según requirements §10. **Cómo se implementaría:** `role` e
 
 ## 12. Consulta del historial de auditoría
 
-**Hoy:** `AuditLog` se escribe en cada mutación y export (REQ-B6), y el interceptor deja una línea por request en stdout (REQ-B9). No hay endpoint ni pantalla en la SPA para leer el historial.
+**Hoy:** `AuditLog` se escribe en cada mutación y export (REQ-B6); el `LoggingInterceptor` deja una línea por request en stdout y el `TransformInterceptor` envuelve el JSON de éxito (REQ-B9). No hay endpoint ni pantalla en la SPA para leer el historial.
 
 **Cómo verlo ahora** (sin código nuevo): Prisma Studio, SQL contra Postgres o `docker compose logs backend`. Pasos y consultas en [`auditoria-y-observabilidad.md`](./auditoria-y-observabilidad.md); el revisor puede marcar REQ-B6/B9 con [`guia-de-validacion.md`](./guia-de-validacion.md) §7–§8.
 

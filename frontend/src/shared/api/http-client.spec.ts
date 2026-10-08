@@ -147,6 +147,64 @@ describe('createHttpClient', () => {
     expect(init.body).toBe(form);
   });
 
+  it('desenvuelve envelope JSON { success, data }', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          success: true,
+          data: { id: 'book-1' },
+          statusCode: 200,
+          timestamp: '2026-10-08T13:00:00.000Z',
+          path: '/api/books/book-1',
+        }),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        },
+      ),
+    );
+
+    const client = createHttpClient({
+      baseUrl: 'http://localhost:3000/api',
+      getAccessToken: () => null,
+      clearAccessToken: () => undefined,
+      fetchImpl,
+    });
+
+    await expect(client.get('/books/book-1')).resolves.toEqual({ id: 'book-1' });
+  });
+
+  it('desenvuelve listado paginado a { data, meta }', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          success: true,
+          data: [{ id: '1' }],
+          meta: { page: 1, limit: 20, total: 1, totalPages: 1 },
+          statusCode: 200,
+          timestamp: '2026-10-08T13:00:00.000Z',
+          path: '/api/books',
+        }),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        },
+      ),
+    );
+
+    const client = createHttpClient({
+      baseUrl: 'http://localhost:3000/api',
+      getAccessToken: () => null,
+      clearAccessToken: () => undefined,
+      fetchImpl,
+    });
+
+    await expect(client.get('/books')).resolves.toEqual({
+      data: [{ id: '1' }],
+      meta: { page: 1, limit: 20, total: 1, totalPages: 1 },
+    });
+  });
+
   it('HttpError usa message del body JSON (string o array)', async () => {
     const fetchImpl = vi
       .fn()

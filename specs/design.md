@@ -125,7 +125,7 @@ flowchart TB
 | Auditoría | Tabla `AuditLog` append-only en la misma `$transaction` | REQ-B6, REQ-DB4 |
 | CSV | Mismos filtros que el listado; excluye soft-deleted | REQ-B4, A5 |
 | Lookups | GET authors/publishers/genres; POST authors | Formularios F3 / F3.3 |
-| Interceptor de respuestas | `LoggingInterceptor` global de observabilidad; **sin** envelope global | REQ-B9; el listado ya trae su `{ data, meta }` y el CSV de REQ-B4 no es JSON |
+| Interceptores de respuestas | `LoggingInterceptor` (observabilidad) + `TransformInterceptor` (envelope JSON) | REQ-B9; el listado aplana `{ data, meta }` en el envelope; CSV, 204 y Swagger se omiten |
 
 ---
 
@@ -152,11 +152,10 @@ Arquitectura modular por dominio (REQ-B1). Cada módulo exporta solo lo necesari
 - **ValidationPipe** global (`whitelist`, `forbidNonWhitelisted`, `transform`).
 - **Transacciones** (`prisma.$transaction`) en create/update/delete de libro + auditoría, y en export (solo lectura + log de auditoría).
 - **Swagger**: decoradores en controllers; documento OpenAPI en `/api/docs` (REQ-DOC2).
-- **Interceptor global** `LoggingInterceptor` (REQ-B9), registrado en `main.ts` junto al `ValidationPipe` y al filtro de excepciones:
-  - Envuelve el stream de respuesta con `tap` / `catchError` de RxJS y mide la latencia con `Date.now()` alrededor de `next.handle()`.
-  - Emite una línea por request: `METHOD /ruta status +Xms` más el `userId` si `request.user` existe (lo puebla el `JwtAuthGuard`).
-  - En error deja registro con el status resuelto por el `HttpExceptionFilter` y **re-lanza** la excepción: el filtro sigue siendo el único que formatea la respuesta.
-  - No transforma el payload: el contrato de cada endpoint es el del DTO documentado en Swagger. Un envelope `{ data, meta }` queda descartado (ver §1.4) porque el listado ya devuelve su propio `{ data, meta: { page, limit, total, totalPages } }` — envolverlo otra vez daría `data.data` — y el export CSV responde `text/csv`.
+- **Interceptores globales** (REQ-B9), registrados como `APP_INTERCEPTOR` en `AppModule` junto al `ValidationPipe` y al filtro de excepciones:
+  - `LoggingInterceptor`: envuelve el stream con `tap` / `catchError` de RxJS, mide la latencia con `Date.now()` alrededor de `next.handle()` y emite `METHOD /ruta status +Xms` más el `userId` si `request.user` existe. En error registra el status y **re-lanza** la excepción: el filtro sigue formateando los errores.
+  - `TransformInterceptor`: mapea el payload JSON de éxito a `{ success: true, data, statusCode, timestamp, path }`. Si el handler ya devolvía `{ data, meta }` (listado paginado), **aplana** `meta` al envelope para no anidar `data.data`. Omite strings (CSV), `204`, `StreamableFile`, rutas `/docs` y handlers con `@SkipTransform()`.
+  - El cliente HTTP del frontend desenvuelve el envelope (`data` + `meta` si existe) para que las features sigan tipadas contra el DTO interno.
 
 ### 2.2 Frontend (alcance de diseño)
 
@@ -164,8 +163,8 @@ Stack de datos y formularios:
 
 - **TanStack React Query**: cache y estado de servidor (listado, detalle, lookups `GET /authors|publishers|genres`, mutación `POST /authors`, mutaciones create/update/delete/export de libros). Invalidación de queries tras mutaciones exitosas.
 - **react-hook-form + Zod**: formulario único create/edit; schema Zod compartido (o espejo del DTO); errores por campo en vivo; submit bloqueado si inválido; autor existente o nuevo (REQ-F3, F3.1, F3.3).
-- Cliente HTTP con interceptor que adjunta `Authorization: Bearer <token>`.
-- 401 → limpia token y redirige a login (REQ-F1).
+- Cliente HTTP con interceptor que adjunta `Authorization: Bearer <token>` y desenvuelve el envelope de `TransformInterceptor` (`data`, o `{ data, meta }` si viene paginado).
+- 401 → limpia token y redirige a login (REQ-F1). Login usa `fetch` directo (sin el 401 global) y aplica el mismo unwrap.
 - Listado: query params espejo del backend; debounce ~300 ms en `search` (solo título) (REQ-F2.4).
 - Export CSV (REQ-B4): botón en el listado. Llama `GET /books/export/csv` con los filtros actuales (sin `page`/`limit`) por el cliente HTTP (Bearer). La respuesta se convierte en `Blob` y se descarga con un `<a download>` temporal; un `href` directo no enviaría el token.
 - Eliminar (REQ-B5): botón en el detalle con confirmación. Mutación `DELETE /books/:id` que invalida listado y detalle y navega a `/books`.

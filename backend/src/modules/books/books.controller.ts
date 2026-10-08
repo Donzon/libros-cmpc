@@ -31,6 +31,7 @@ import {
 } from '@nestjs/swagger';
 import { memoryStorage } from 'multer';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { SkipTransform } from '../../common/decorators/skip-transform.decorator';
 import { ErrorResponseDto } from '../../common/dto/error-response.dto';
 import { AuthenticatedUser } from '../auth/jwt.strategy';
 import { BooksService, BooksListResponse } from './books.service';
@@ -75,6 +76,7 @@ export class BooksController {
   }
 
   @Get('export/csv')
+  @SkipTransform()
   @Header('Content-Type', 'text/csv; charset=utf-8')
   @Header('Content-Disposition', 'attachment; filename="books.csv"')
   @ApiOperation({ summary: 'Exportar CSV con los mismos filtros del listado (sin paginación)' })

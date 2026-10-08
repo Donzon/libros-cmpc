@@ -240,7 +240,7 @@ Detalle (capas Nest, flujo crear+imagen, **modelo relacional** e índices): [`do
 | Crear + imagen | Dos requests (JSON y multipart) con reintento solo del upload | Un fallo de red en la imagen no duplica libros |
 | Errores | Filtro global con formato `{ statusCode, message, error, timestamp, path }` | Contrato uniforme para el frontend |
 | Observabilidad | `LoggingInterceptor` global: método, ruta, status, latencia y `userId` por request; re-lanza la excepción sin tocarla. Se ve en `docker compose logs backend` | Trazabilidad en producción sin duplicar el formateo de errores del filtro |
-| Contrato de respuestas | El interceptor **no** envuelve el payload en `{ data, meta }` | El listado ya devuelve su propio `{ data, meta }`: un envelope global lo anidaría dos veces (`data.data`) y además rompería el `text/csv` del export |
+| Contrato de respuestas | `TransformInterceptor` envuelve JSON de éxito en `{ success, data, statusCode, timestamp, path }` | Cumple la transformación de respuestas del enunciado. El listado aplana `meta` (no hay `data.data`). CSV, 204 y Swagger no se envuelven. El frontend desenvuelve el envelope. |
 | Errores de render | `ErrorBoundary` de React envolviendo el router | React Query cubre los errores de red, pero un throw en render dejaría la SPA en blanco |
 | Configuración | Validación de env con Zod al arrancar | Falla rápido y explícito ante configuración inválida |
 | Seguridad HTTP | Helmet; `/uploads` de solo lectura, sin listado de directorio y con `nosniff` | Endurecimiento básico listo para producción |

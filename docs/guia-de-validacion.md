@@ -129,16 +129,18 @@ Checklist corto:
 
 ---
 
-## 8. Logs HTTP del interceptor — REQ-B9, B7, F6
+## 8. Interceptores HTTP — REQ-B9, B7, F6
 
 Detalle de formato: [`auditoria-y-observabilidad.md` §2](./auditoria-y-observabilidad.md#2-logs-http-logginginterceptor--req-b9).
 
 | # | REQ | Qué hacer | Qué tiene que pasar |
 |---|-----|-----------|---------------------|
 | 8.1 | B9 | `docker compose logs -f backend` y usar la SPA | Una línea por request: `METHOD ruta status +Xms` y `user=<uuid>` si hay JWT. |
-| 8.2 | B9 | `GET /api/health` | Línea **sin** `user=`. El JSON de books **no** se reenvuelve. |
-| 8.3 | B7 | Forzar un 400 (body inválido) o 404 | JSON `{ statusCode, message, error, timestamp, path }`. El interceptor loguea el error y **no** cambia ese formato. |
-| 8.4 | F6 | Error Boundary | Un throw de render no deja pantalla en blanco: fallback + reintentar. Los errores de red del listado los cubre REQ-F5, no este boundary. |
+| 8.2 | B9 | `GET /api/health` (público) | Línea **sin** `user=`. JSON `{ success: true, data: { status: "ok" }, statusCode, timestamp, path }`. |
+| 8.3 | B9 | Login o detalle de un libro (Network del browser) | Body de éxito envuelto: `{ success, data, statusCode, timestamp, path }`. El listado además trae `meta` al mismo nivel (no `data.data`). |
+| 8.4 | B9 | Export CSV | `Content-Type: text/csv`; no es JSON envelope. |
+| 8.5 | B7 | Forzar un 400 (body inválido) o 404 | JSON `{ statusCode, message, error, timestamp, path }` **sin** `success: true`. El logging registra el error y el filtro formatea. |
+| 8.6 | F6 | Error Boundary | Un throw de render no deja pantalla en blanco: fallback + reintentar. Los errores de red del listado los cubre REQ-F5, no este boundary. |
 
 Helmet: en cualquier respuesta de la API debe aparecer un header de seguridad (`X-Content-Type-Options: nosniff` o similar).
 
@@ -216,7 +218,7 @@ Otros checks: `cd backend && npm run prisma:validate`, `./scripts/smoke-compose.
 | REQ-B6 | Auditoría | [auditoría](./auditoria-y-observabilidad.md) |
 | REQ-B7 | Errores | §8.3 |
 | REQ-B8 | Env validado | §1.3, §1.5 |
-| REQ-B9 | Interceptor | [logs HTTP](./auditoria-y-observabilidad.md#2-logs-http-logginginterceptor--req-b9) |
+| REQ-B9 | Interceptores | [logs HTTP](./auditoria-y-observabilidad.md#2-logs-http-logginginterceptor--req-b9) y envelope JSON (Network: `{ success, data, … }`) |
 | REQ-DB1–DB5 | Prisma, índices, tx, seed | §1.2, §7, §9 |
 | REQ-T1–T3 | Tests | §10 |
 | REQ-O1–O4 | Compose, seed, env, SPA | §1 |

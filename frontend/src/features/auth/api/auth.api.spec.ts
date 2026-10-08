@@ -39,6 +39,34 @@ describe('loginRequest', () => {
     );
   });
 
+  it('desenvuelve el envelope { success, data } del TransformInterceptor', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          success: true,
+          data: { accessToken: 'jwt.token.here', expiresIn: '30m' },
+          statusCode: 200,
+          timestamp: '2026-10-08T13:00:00.000Z',
+          path: '/api/auth/login',
+        }),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        },
+      ),
+    );
+
+    await expect(
+      loginRequest(
+        { email: 'admin@cmpc.local', password: 'secret' },
+        { baseUrl: 'http://localhost:3000/api', fetchImpl },
+      ),
+    ).resolves.toEqual({
+      accessToken: 'jwt.token.here',
+      expiresIn: '30m',
+    });
+  });
+
   it('credenciales inválidas → HttpError 401', async () => {
     const fetchImpl = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ message: 'Unauthorized', statusCode: 401 }), {

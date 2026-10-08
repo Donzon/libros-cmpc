@@ -1,3 +1,5 @@
+import { unwrapApiResponse } from './unwrap-response';
+
 export class HttpError extends Error {
   readonly status: number;
   readonly body: unknown;
@@ -140,7 +142,7 @@ export function createHttpClient(options: HttpClientOptions): HttpClient {
 
     const contentType = response.headers.get('Content-Type') ?? '';
     if (contentType.includes('application/json')) {
-      return (await response.json()) as T;
+      return unwrapApiResponse<T>(await response.json());
     }
 
     return (await response.text()) as T;

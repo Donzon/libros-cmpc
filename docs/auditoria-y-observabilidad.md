@@ -6,6 +6,7 @@ Hay **dos canales distintos**. No se mezclan:
 |-------|-----------|------------|----------|
 | Tabla `AuditLog` | REQ-B6 | PostgreSQL | Quién hizo qué sobre un libro y cuándo (crear, editar, imagen, borrar, exportar CSV) |
 | `LoggingInterceptor` | REQ-B9 | stdout del contenedor `backend` | Cada request HTTP: método, ruta, status, latencia y `userId` si hay JWT |
+| `TransformInterceptor` | REQ-B9 | body JSON de éxito | Envelope `{ success, data, statusCode, timestamp, path }` (`meta` al mismo nivel en listados) |
 
 No hay pantalla de auditoría en la SPA ni un `GET /api/audit-logs` (ver [`pending.md`](./pending.md) §12). La forma de **ver** los registros es Prisma Studio, SQL o los logs del contenedor.
 
@@ -139,7 +140,7 @@ La subida de imagen (también `UPDATE` con `metadata.imagePath`) se valida igual
 
 ## 2. Logs HTTP (`LoggingInterceptor`) — REQ-B9
 
-Cada request deja **una línea** en stdout. El interceptor no cambia el body ni el CSV: Swagger sigue siendo el contrato.
+Cada request deja **una línea** en stdout. El logging no cambia el body: la transformación JSON la hace `TransformInterceptor` (más abajo).
 
 ```bash
 docker compose logs -f backend
@@ -162,10 +163,28 @@ Qué comprobar:
 | Ruta pública (`/api/health`, `/api/auth/login`) | método, ruta, status, latencia; **sin** `user=` |
 | Ruta con JWT válido | lo mismo **más** `user=<uuid>` (el mismo `userId` que en `AuditLog`) |
 | Error 4xx/5xx | línea con el status de error; el JSON de respuesta sigue el formato del filtro global (`statusCode`, `message`, `error`, `timestamp`, `path`) |
-| `GET /api/books` | el JSON **no** viene envuelto otra vez: es `{ "data": [...], "meta": {...} }`, no `{ "data": { "data": ... } }` |
-| `GET /api/books/export/csv` | `Content-Type: text/csv`; el interceptor no lo convierte a JSON |
+| `GET /api/books` | envelope de éxito **sin** `data.data`: `{ "success": true, "data": [...], "meta": {...}, "statusCode", "timestamp", "path" }` |
+| `GET /api/books/export/csv` | `Content-Type: text/csv`; `TransformInterceptor` no lo convierte a JSON |
 
 Las peticiones `GET /uploads/...` también pasan por el interceptor si las atiende Nest.
+
+### Envelope JSON (`TransformInterceptor`)
+
+Respuesta de éxito típica (detalle, login, lookups):
+
+```json
+{
+  "success": true,
+  "data": { "id": "…", "title": "…" },
+  "statusCode": 200,
+  "timestamp": "2026-10-08T13:00:00.000Z",
+  "path": "/api/books/…"
+}
+```
+
+Listado: `data` es el array de libros y `meta` va al mismo nivel (`page`, `limit`, `total`, `totalPages`). No hay `data.data`.
+
+Cómo comprobarlo: DevTools → Network en la SPA, o `curl` a `/api/health` / `/api/auth/login`.
 
 ---
 
